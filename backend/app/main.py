@@ -12,6 +12,7 @@ Run locally:
     uvicorn app.main:app --reload --port 8000
 """
 
+import logging
 from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException
@@ -21,13 +22,30 @@ from pydantic import BaseModel
 from .config import settings
 from .db import get_profile_by_email, supabase, upsert_profile
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("auth_api")
+
 app = FastAPI(title="Auth API")
+
+# The server still boots without keys so you can work on the frontend,
+# but auth endpoints will fail until Supabase credentials are set.
+if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+    logger.warning(
+        "SUPABASE_URL / SUPABASE_ANON_KEY are not set. "
+        "Fill backend/.env (or backend/app/.env) to use the auth endpoints."
+    )
 
 # Allow the browser frontend to call these endpoints.
 # Add every frontend origin here (local dev + your Vercel deployment).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", settings.FRONTEND_URL],
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        settings.FRONTEND_URL,
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,7 +89,10 @@ async def auth_signup(req: SignupRequest):
             }
         )
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Could not create account") from exc
+        # Surface Supabase's reason (already registered, weak password,
+        # rate limited, invalid email...) so the frontend can show it.
+        reason = getattr(exc, "message", None) or str(exc)
+        raise HTTPException(status_code=400, detail=reason) from exc
 
     # Persist email + username in our profile table.
     upsert_profile(email=req.email, username=req.username)
@@ -136,6 +157,22 @@ async def auth_reset_password(req: ResetPasswordRequest):
     return {"message": "Password updated."}
 
 
+# ---------- Health check ----------
+@app.get("/health")
+async def health():
+    """Confirm the backend is up and that Supabase is reachable."""
+    db_ok = True
+    try:
+        supabase.table("profiles").select("id").limit(1).execute()
+    except Exception:
+        db_ok = False
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "supabase": "connected" if db_ok else "unreachable",
+        "service_role_key_set": bool(settings.SUPABASE_SERVICE_ROLE_KEY),
+    }
+
+
 # ---------- Current user ----------
 @app.get("/api/auth/me")
 async def auth_me(authorization: Annotated[str | None, Header()] = None):
@@ -153,14 +190,25 @@ async def auth_me(authorization: Annotated[str | None, Header()] = None):
     return {
         "id": user.id,
         "email": user.email,
-        "username": (profile or {}).get("username"),
+        "username": (
+            (profile or {}).get("username")
+            or user.user_metadata.get("username")
+        ),
     }
 
 
 @app.post("/api/auth/logout")
 async def auth_logout(authorization: Annotated[str | None, Header()] = None):
-    """Invalidate the current session in Supabase."""
+    """Invalidate the current session in Supabase.
+
+    This is best-effort: Supabase auth tokens expire on their own and the
+    frontend discards the token, so a failed revocation must never 500.
+    """
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1]
-        supabase.auth.sign_out(token)
+        try:
+            supabase.auth.set_session(token, token)
+            supabase.auth.sign_out()
+        except Exception:
+            pass
     return {"message": "Signed out"}
