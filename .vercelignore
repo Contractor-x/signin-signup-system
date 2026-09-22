@@ -1,0 +1,11 @@
+# Never upload the backend, secrets, or local tooling to Vercel.
+# Only the static site (index.html, dashboard.html, css/, js/) is deployed.
+backend/
+supabase/
+.env
+.env.*
+!.env.example
+**/__pycache__/
+.venv/
+node_modules/
+.git/
