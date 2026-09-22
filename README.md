@@ -80,31 +80,25 @@ API docs អាចមើលបាននៅ `http://localhost:8000/docs` (Swagger
 
 ---
 
-## 🗄️ Supabase Setup (via MCP)
+## 🗄️ Supabase Setup (via MCP or SQL editor)
 
 Backend ប្រើ **Supabase Auth** (email/password) និង table `profiles` សម្រាប់ email + username។
 
-1. បើក opencode project (បន្ទាប់ពី restart — Supabase MCP ផ្ទុកឡើង)។
-2. សុំបង្កើត table តាមខាងក្រោម ដោយផ្ទាល់តាម MCP (`execute_sql` / Run SQL tool):
-
-```sql
-create table profiles (
-  id uuid primary key default gen_random_uuid(),
-  email text unique not null,
-  username text,
-  created_at timestamptz default now()
-);
-```
-
-3. Supabase Auth → **Providers → Email** → បើក "Enable Sign up" (email confirmation អាចបិទបានពេល test)។
-4. Keys ដាក់ក្នុង `backend/.env`:
+1. បើក `supabase/setup.sql` ហើយ run ម្តងក្នុង **Supabase Dashboard → SQL Editor → New query → Run** (ឬ run តាម Supabase MCP) — វាបង្កើត table `profiles` និង RLS policy ដើម្បីឲ្យ signup/signin ដំណើរការដោយគ្មានកំហុស។
+2. Supabase Auth → **Providers → Email** → បើក "Enable Sign up" (email confirmation អាចបិទបានពេល test)។
+3. Keys ដាក់ក្នុង `backend/.env`:
    ```
-   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_URL=https://qcknajramizetgecqgna.supabase.co
    SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # optional
    FRONTEND_URL=http://localhost:5500
    ```
 
-> 💡 `SUPABASE_URL` និង `SUPABASE_ANON_KEY` រកបាននៅ Supabase Dashboard → **Project → Settings → API**។
+អំពី `SUPABASE_SERVICE_ROLE_KEY` (optional)៖
+- បើគ្មាន → backend ប្រើ user metadata ជំនួស `profiles` table ពេល RLS ទប់ insert (signup/login នៅតែដំណើរការ)។
+- បើមាន → backend សរសេរ email + username ទៅ `profiles` table ដោយផ្ទាល់ (bypass RLS) — key នេះទុកតែក្នុង backend `backend/.env` កុំដាក់ក្នុង frontend។
+
+> 💡 `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` រកបាននៅ Supabase Dashboard → **Project → Settings → API**។
 
 ---
 
@@ -172,6 +166,7 @@ Code ពេញលេញ (commented) មានក្នុង [`backend/app/main.
 | POST | `/api/auth/reset-password` | កំណត់ password ថ្មី |
 | GET | `/api/auth/me` | User បច្ចុប្បន្ន (email + username ពី Supabase) |
 | POST | `/api/auth/logout` | Sign out / invalidate session |
+| GET | `/health` | ពិនិត្យ backend ↔ Supabase connection |
 
 ### Frontend ↔ Backend wiring
 
