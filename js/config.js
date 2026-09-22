@@ -1,7 +1,10 @@
 // Backend API base URL.
-// - Local dev (backend on your machine): keep "" and open index.html via
-//   Live Server so both run on the same origin, OR set "http://localhost:8000".
-// - Production (backend on your own server, frontend on Vercel):
-//   set your server's https:// URL here, e.g. "https://auth.your-domain.com".
-//   It MUST match the CORS allowlist (backend/app/main.py).
-const API_BASE_URL = '';
+// The backend runs on your machine, so keep this pointing at localhost.
+// Modern browsers (Chrome/Edge/Firefox) allow an HTTPS site to call
+// http://localhost, so this works even when index.html is hosted on Vercel.
+//
+// - Local dev:  http://localhost:8000
+// - Same machine as the backend (Vercel-hosted page): http://localhost:8000
+// - Open this from ANOTHER device: put your computer's LAN IP here,
+//   e.g. "http://192.168.1.50:8000" (and add that IP to the CORS list).
+const API_BASE_URL = 'http://localhost:8000';

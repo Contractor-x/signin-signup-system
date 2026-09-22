@@ -84,6 +84,7 @@ if (signInForm) {
           saveAuthToken(data.access_token);
           showToast('Signed in successfully', 'success');
           signInForm.reset();
+          window.location.href = 'dashboard.html';
         })
         .catch((err) => {
           showToast(err.message, 'error');
@@ -153,9 +154,16 @@ if (signUpForm) {
         password: suPassword.value,
       })
         .then((data) => {
-          saveAuthToken(data.access_token);
-          showToast('Account created successfully', 'success');
           signUpForm.reset();
+
+          if (data.access_token) {
+            saveAuthToken(data.access_token);
+            window.location.href = 'dashboard.html';
+          } else {
+            // Supabase has email confirmation enabled: no session until the
+            // confirmation link is clicked.
+            showToast('Account created. Check your email to confirm.', 'success');
+          }
         })
         .catch((err) => {
           showToast(err.message, 'error');
