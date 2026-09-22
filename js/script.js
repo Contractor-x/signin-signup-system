@@ -1,29 +1,5 @@
 const container = document.getElementById('container');
 
-// ---------- Google OAuth callback ----------
-// The Python backend redirects back here after a successful Google login:
-//   <FRONTEND_URL>?token=<access_token>&email=<user email>
-// Save the token, greet the user, then clean the URL so the token isn't left in the address bar.
-(function handleGoogleCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  const email = params.get('email');
-
-  if (token) {
-    localStorage.setItem('auth_token', token);
-
-    requestAnimationFrame(() => {
-      const who = email ? ` ${email}` : '';
-      showToast(`Signed in with Google as${who}`, 'success');
-    });
-
-    params.delete('token');
-    params.delete('email');
-    const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-    window.history.replaceState({}, '', clean);
-  }
-})();
-
 document.querySelectorAll('[data-switch="signup"]').forEach((btn) => {
   btn.addEventListener('click', () => {
     container.classList.add('right-panel-active');

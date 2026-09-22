@@ -5,25 +5,22 @@ fails loudly at startup instead of halfway through a request.
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load backend/.env (if present) so the app runs locally without extra tooling.
-load_dotenv()
+# The `.env` file can live in two places; load whichever exists:
+#   backend/.env      (recommended, next to run.sh)
+#   backend/app/.env  (accepted too)
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+for dotenv_path in (BACKEND_DIR / ".env", BACKEND_DIR / "app" / ".env"):
+    if dotenv_path.is_file():
+        load_dotenv(dotenv_path)
+        break
 
 
 class Settings:
     """All environment variables used by the backend."""
-
-    # Google OAuth credentials (create at https://console.cloud.google.com/apis/credentials).
-    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
-    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
-
-    # The URL Google redirects the browser to after the user consents.
-    # Must be added to "Authorized redirect URIs" on the OAuth 2.0 Client.
-    GOOGLE_REDIRECT_URI: str = os.getenv(
-        "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/auth/callback"
-    )
 
     # Supabase project credentials (https://supabase.com/dashboard/project/_/settings/api).
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")

@@ -1,10 +1,8 @@
 """FastAPI backend for the sign-in / sign-up system.
 
 Endpoints:
-    GET  /api/auth/google           Start Google OAuth (frontend "Continue with Google" button)
-    GET  /api/auth/callback         Google callback: build Supabase session, save profile, back to frontend
-    POST /api/auth/login            Email + password login
-    POST /api/auth/signup           Email + password signup (API-only; the UI sign-up is Google-only)
+    POST /api/auth/signup           Create an account with email + password
+    POST /api/auth/login            Sign in with email + password
     POST /api/auth/forgot-password  Send a password reset email
     POST /api/auth/reset-password   Set a new password
     GET  /api/auth/me               Current user (email + username from Supabase)
@@ -18,10 +16,8 @@ from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from .auth import build_authorize_url, exchange_code_for_token, verify_google_token
 from .config import settings
 from .db import get_profile_by_email, supabase, upsert_profile
 
@@ -39,15 +35,15 @@ app.add_middleware(
 
 
 # ---------- Request / response models ----------
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
 class SignupRequest(BaseModel):
     email: str
     password: str
     username: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -59,48 +55,35 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
-# ---------- Google OAuth ----------
-@app.get("/api/auth/google")
-async def auth_google():
-    """Step 1 — start the Google OAuth flow.
+# ---------- Sign up ----------
+@app.post("/api/auth/signup")
+async def auth_signup(req: SignupRequest):
+    """Create an account with email + password via Supabase Auth.
 
-    The frontend "Continue with Google" button redirects the browser to this
-    URL, which in turn redirects on to Google's consent screen.
+    Stores the username alongside the email in the `profiles` table.
     """
-    return RedirectResponse(build_authorize_url())
+    try:
+        data = supabase.auth.sign_up(
+            {
+                "email": req.email,
+                "password": req.password,
+                "options": {"data": {"username": req.username}},
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Could not create account") from exc
+
+    # Persist email + username in our profile table.
+    upsert_profile(email=req.email, username=req.username)
+
+    session = data.session
+    return {
+        "access_token": session.access_token if session else None,
+        "user": {"id": data.user.id, "email": data.user.email, "username": req.username},
+    }
 
 
-@app.get("/api/auth/callback")
-async def auth_callback(code: str):
-    """Step 2 — Google redirects the browser back with ?code=... after consent.
-
-    - Exchange the code for a Google ID token.
-    - Verify the token and read email + username from the Google profile.
-    - Create a Supabase auth session for that identity.
-    - Persist email + username in the `profiles` table.
-    - Redirect to the frontend with the access token, which stores it and
-      greets the user (see js/script.js -> handleGoogleCallback).
-    """
-    tokens = await exchange_code_for_token(code)
-    info = verify_google_token(tokens["id_token"])
-
-    email = info["email"]
-    username = info.get("name")
-
-    # Turn the verified Google identity into a Supabase session.
-    auth_response = supabase.auth.sign_in_with_id_token(
-        provider="google", token=tokens["id_token"]
-    )
-    access_token = auth_response.session.access_token
-
-    # Store email + username in Supabase (our profile table).
-    upsert_profile(sub=info["sub"], email=email, username=username)
-
-    # Send the user back to the frontend with the token embedded in the URL.
-    return RedirectResponse(f"{settings.FRONTEND_URL}?token={access_token}&email={email}")
-
-
-# ---------- Email + password ----------
+# ---------- Sign in ----------
 @app.post("/api/auth/login")
 async def auth_login(req: LoginRequest):
     """Sign in with email + password via Supabase Auth.
@@ -126,26 +109,6 @@ async def auth_login(req: LoginRequest):
             "username": data.user.user_metadata.get("username"),
         },
     }
-
-
-@app.post("/api/auth/signup")
-async def auth_signup(req: SignupRequest):
-    """Create a password account (API-only; the UI sign-up is Google-only).
-
-    Kept available for seeding test accounts, admin tooling or mobile clients.
-    """
-    try:
-        data = supabase.auth.sign_up(
-            {
-                "email": req.email,
-                "password": req.password,
-                "options": {"data": {"username": req.username}},
-            }
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Could not create account") from exc
-
-    return {"user": {"id": data.user.id, "email": data.user.email}}
 
 
 # ---------- Password reset ----------

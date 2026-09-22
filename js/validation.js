@@ -38,7 +38,7 @@ async function postJSON(path, body) {
   return data;
 }
 
-// Persist the Supabase access token returned by login / Google callback.
+// Persist the Supabase access token returned by the backend.
 function saveAuthToken(token) {
   if (token) localStorage.setItem('auth_token', token);
 }
@@ -103,28 +103,76 @@ if (signInForm) {
   });
 }
 
-// ---------- Google OAuth (sign in + sign up) ----------
-function redirectToGoogle(btn) {
-  setLoading(btn, true);
-  showToast('Redirecting to Google...');
-  setTimeout(() => {
-    window.location.href = API_BASE_URL + '/api/auth/google';
-  }, 600);
-}
-
-const googleSignInBtn = document.getElementById('googleSignInBtn');
-if (googleSignInBtn) {
-  googleSignInBtn.addEventListener('click', () => redirectToGoogle(googleSignInBtn));
-}
-
+// ---------- Sign Up (email + password) ----------
 const signUpForm = document.getElementById('signUpForm');
 
 if (signUpForm) {
-  const googleSignUpBtn = document.getElementById('googleSignUpBtn');
+  const suName = document.getElementById('suName');
+  const suNameError = document.getElementById('suNameError');
+  const suEmail = document.getElementById('suEmail');
+  const suEmailError = document.getElementById('suEmailError');
+  const suPassword = document.getElementById('suPassword');
+  const suPasswordError = document.getElementById('suPasswordError');
 
   signUpForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    redirectToGoogle(googleSignUpBtn);
+    let valid = true;
+
+    clearError(suName, suNameError);
+    clearError(suEmail, suEmailError);
+    clearError(suPassword, suPasswordError);
+
+    if (suName.value.trim() === '') {
+      showError(suName, suNameError, 'Name is required');
+      valid = false;
+    }
+
+    if (suEmail.value.trim() === '') {
+      showError(suEmail, suEmailError, 'Email is required');
+      valid = false;
+    } else if (!isValidEmail(suEmail.value.trim())) {
+      showError(suEmail, suEmailError, 'Please enter a valid email');
+      valid = false;
+    }
+
+    if (suPassword.value === '') {
+      showError(suPassword, suPasswordError, 'Password is required');
+      valid = false;
+    } else if (suPassword.value.length < 8) {
+      showError(suPassword, suPasswordError, 'Password must be at least 8 characters');
+      valid = false;
+    }
+
+    if (valid) {
+      const btn = document.getElementById('signUpSubmit');
+      setLoading(btn, true);
+
+      postJSON('/api/auth/signup', {
+        username: suName.value.trim(),
+        email: suEmail.value.trim(),
+        password: suPassword.value,
+      })
+        .then((data) => {
+          saveAuthToken(data.access_token);
+          showToast('Account created successfully', 'success');
+          signUpForm.reset();
+        })
+        .catch((err) => {
+          showToast(err.message, 'error');
+        })
+        .finally(() => {
+          setLoading(btn, false);
+        });
+    }
+  });
+
+  [suName, suEmail, suPassword].forEach((input) => {
+    input.addEventListener('input', () => {
+      const errorEl =
+        input === suName ? suNameError :
+        input === suEmail ? suEmailError : suPasswordError;
+      clearError(input, errorEl);
+    });
   });
 }
 

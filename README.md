@@ -16,11 +16,10 @@
 
 ## ✨ Features
 
-- Sign in ជាមួយ **Email / Password** (Python backend + Supabase Auth)
-- **Sign up តែតាម Google ប៉ុណ្ណោះ** (Continue with Google)
-- Google OAuth sign-in ក៏មានដែរ នៅលើ panel Sign in
+- **Sign in** ជាមួយ Email / Password
+- **Sign up** ជាមួយ Email / Password (Name / Email / Password)
 - Backend **FastAPI (Python)** មានក្នុង `backend/` — commented code
-- Supabase ទុក **email + username** ក្នុង table `profiles`
+- Supabase Auth គ្រប់គ្រងគណនី ហើយ Supabase ទុក **email + username** ក្នុង table `profiles`
 - Forgot password modal (send reset link → auto-close)
 - Toggle animation រវាង Sign in ↔ Sign up (sliding panel style)
 - Responsive ពេញលេញ (Desktop / Tablet / Mobile)
@@ -34,22 +33,23 @@
 
 ```
 Signin-Signup-System/
-├── index.html          → HTML (Sign in form + Google button + Forgot password modal)
+├── index.html          → HTML (Sign in form + Sign up form + Forgot password modal)
 ├── css/
 │   └── style.css       → Layout + Animation + Responsive + Modal + Toast + Spinner
 ├── js/
 │   ├── config.js       → API_BASE_URL (backend URL) — កន្លែងកំណត់ backend
-│   ├── script.js       → Panel toggle + forgot-password modal + Google callback handler
+│   ├── script.js       → Panel toggle + forgot-password modal
 │   ├── validation.js   → Form validation + fetch calls ទៅកាន់ Python endpoints
 │   └── ux.js           → setLoading(), showToast(), show/hide password
 ├── backend/            → Python (FastAPI) backend
 │   ├── app/
 │   │   ├── main.py     → All API endpoints (commented)
-│   │   ├── auth.py     → Google OAuth helpers
 │   │   ├── db.py       → Supabase client + `profiles` helpers
 │   │   └── config.py   → Environment variables
 │   ├── requirements.txt
-│   └── .env.example    → Copy → .env រួចបំពេញ keys
+│   ├── .env.example    → Copy → .env រួចបំពេញ keys
+│   ├── run.sh          → Production launcher (gunicorn / uvicorn workers)
+│   └── .gitignore      → មិន commit .env
 └── README.md
 ```
 
@@ -57,15 +57,14 @@ Signin-Signup-System/
 
 ## 🚀 How to Run
 
-### 1. Frontend (Vercel / local)
+### 1. Frontend (local)
 
 ```bash
 git clone <repo-url>
 cd Signin-Signup-System
 ```
 
-- Local: បើក `index.html` ជាមួយ **Live Server** (port 5500)
-- Vercel: import repo ទៅ [vercel.com](https://vercel.com) → build command `none`, output `index.html` (static) — frontend នេះជា static files តែប៉ុណ្ណោះ
+បើក `index.html` ជាមួយ **Live Server** (port 5500)។
 
 ### 2. Backend (Python)
 
@@ -73,7 +72,7 @@ cd Signin-Signup-System
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # បំពេញ Google + Supabase keys
+cp .env.example .env        # បំពេញ Supabase keys
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -81,39 +80,82 @@ API docs អាចមើលបាននៅ `http://localhost:8000/docs` (Swagger
 
 ---
 
-## 🔑 Google OAuth — Redirect URL នៅលើ Vercel និង Google
+## 🗄️ Supabase Setup (via MCP)
 
-OAuth flow តម្រូវឲ្យ URL ត្រូវគ្នាត្រឹមត្រូវ **3 កន្លែង**៖
+Backend ប្រើ **Supabase Auth** (email/password) និង table `profiles` សម្រាប់ email + username។
 
-| # | កន្លែង | តើយក URL ពីណា | តម្លៃ |
-|---|---|---|---|
-| 1 | `FRONTEND_URL` (backend `.env`) | Vercel → Project → **Domains** ឬ **Deployments** | `https://your-app.vercel.app` |
-| 2 | `GOOGLE_REDIRECT_URI` (backend `.env`) | ត្រូវតែត្រូវនឹង #3 | `https://your-app.vercel.app/api/auth/callback` |
-| 3 | Google Cloud Console → **Credentials → OAuth 2.0 Client ID (Web) → Authorized redirect URIs** | ចម្លងពី #2 | `https://your-app.vercel.app/api/auth/callback` |
-
-> ⚠️ Google ទទួលបាន redirect URIs **ពិតប្រាកដតែប៉ុណ្ណោះ** — មិនអាចប្រើ `localhost` ពេល deploy លើ Vercel បានទេ។ បើ frontend និង backend នៅលើ host ផ្សេងគ្នា ត្រូវដាក់ host នៃ backend នៅក្នុង #2/#3 ហើយកែ `js/config.js` → `API_BASE_URL` ឲ្យចង្អុលទៅ backend origin។
-
-### របៀបតាមដាន url នីមួយៗ
-
-1. **Vercel** → បើក project → **Settings → Domains** ឬ Preview Deployment URL (ឧ. `https://signin-signup-system.vercel.app`)
-2. **Environment Variables (Vercel)** → project → **Settings → Environment Variables** → add:
-   ```
-   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
-   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, FRONTEND_URL
-   ```
-3. **Google Cloud Console** → **APIs & Services → Credentials → OAuth 2.0 Client (type: Web)** → បញ្ចូល Authorized redirect URI = `https://your-app.vercel.app/api/auth/callback`
-
-### Supabase table `profiles`
+1. បើក opencode project (បន្ទាប់ពី restart — Supabase MCP ផ្ទុកឡើង)។
+2. សុំបង្កើត table តាមខាងក្រោម ដោយផ្ទាល់តាម MCP (`execute_sql` / Run SQL tool):
 
 ```sql
 create table profiles (
   id uuid primary key default gen_random_uuid(),
-  sub text unique not null,          -- Google subject ID
   email text unique not null,
   username text,
-  avatar_url text,
   created_at timestamptz default now()
 );
+```
+
+3. Supabase Auth → **Providers → Email** → បើក "Enable Sign up" (email confirmation អាចបិទបានពេល test)។
+4. Keys ដាក់ក្នុង `backend/.env`:
+   ```
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your-anon-key
+   FRONTEND_URL=http://localhost:5500
+   ```
+
+> 💡 `SUPABASE_URL` និង `SUPABASE_ANON_KEY` រកបាននៅ Supabase Dashboard → **Project → Settings → API**។
+
+---
+
+## 🔧 Production — Frontend លើ Vercel, Backend លើ Server របស់អ្នក
+
+### Frontend
+
+Import repo ទៅ [vercel.com](https://vercel.com) — static files វាដំណើរការតែប៉ុណ្ណោះ (build command `none`)។
+
+### Backend env (production)
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+FRONTEND_URL=https://signin-signup-system.vercel.app   # Vercel frontend URL
+```
+
+### Frontend → backend
+
+`js/config.js` → `API_BASE_URL = 'https://auth.your-domain.com'` ចង្អុលទៅ server អ្នក។
+
+### Run backend (HTTPS)
+
+```bash
+cd backend
+./run.sh           # gunicorn on 0.0.0.0:8000 (uvicorn workers)
+```
+
+ដាក់នៅពីក្រោយ reverse proxy (Caddy ឬ Nginx) ដើម្បីផ្តល់ HTTPS៖
+
+```caddyfile
+auth.your-domain.com {
+    reverse_proxy 127.0.0.1:8000
+}
+```
+
+### systemd (auto-start, optional)
+
+```ini
+[Unit]
+Description=Signin Auth API
+After=network.target
+
+[Service]
+WorkingDirectory=/path/to/signin-signup-system/backend
+ExecStart=/path/to/signin-signup-system/backend/.venv/bin/gunicorn app.main:app --bind 127.0.0.1:8000 --workers 2 --worker-class uvicorn.workers.UvicornWorker
+Restart=always
+User=contractor
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 ---
@@ -124,10 +166,8 @@ Code ពេញលេញ (commented) មានក្នុង [`backend/app/main.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/auth/google` | ចាប់ផ្តើម Google OAuth — Google button redirect មកទីនេះ |
-| GET | `/api/auth/callback` | Google redirect back → Supabase session → save email + username → ត្រឡប់ទៅ frontend |
-| POST | `/api/auth/login` | Email + password login (Supabase Auth) |
-| POST | `/api/auth/signup` | Email + password signup (API-only; UI sign-up គឺ Google-only) |
+| POST | `/api/auth/signup` | បង្កើតគណនី Email + Password (store username ក្នុង Supabase) |
+| POST | `/api/auth/login` | Sign in Email + Password (Supabase Auth) |
 | POST | `/api/auth/forgot-password` | ផ្ញើ reset link (+ មិនលេចធ្លាយ account ណាមាន) |
 | POST | `/api/auth/reset-password` | កំណត់ password ថ្មី |
 | GET | `/api/auth/me` | User បច្ចុប្បន្ន (email + username ពី Supabase) |
@@ -135,15 +175,8 @@ Code ពេញលេញ (commented) មានក្នុង [`backend/app/main.
 
 ### Frontend ↔ Backend wiring
 
-- Google buttons → `window.location` → `GET /api/auth/google`
 - Sign in form → `POST /api/auth/login` (fetch, JSON)
+- Sign up form → `POST /api/auth/signup`
 - Forgot password → `POST /api/auth/forgot-password`
-- Callback success → browser ត្រលប់មក `?token=...&email=...` → `js/script.js` រក្សាទុក token ក្នុង `localStorage('auth_token')`
 - Backend URL កំណត់នៅ `js/config.js` → `API_BASE_URL`
-
----
-
-## ⚠️ Note
-
-Frontend គឺ static (Vercel) ហើយ backend គឺ FastAPI (Python) ដាច់ដោយឡែក។
-**Sign up** UI គឺ Google-only; password signup អាចប្រើបានតាម API `/api/auth/signup` ឬ Supabase dashboard។
+- ការចូលជោគជ័យ → backend ផ្ញើ `access_token` → frontend ទុកក្នុង `localStorage('auth_token')`
