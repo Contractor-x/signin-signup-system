@@ -13,7 +13,37 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-// ---------- Sign In validation ----------
+// POST JSON to the Python backend and parse the response.
+// Throws an Error with a readable message when the backend replies with an error.
+async function postJSON(path, body) {
+  const res = await fetch(API_BASE_URL + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (err) {
+    // non-JSON response body
+  }
+
+  if (!res.ok) {
+    const detail = data && data.detail;
+    const message = typeof detail === 'string' ? detail : 'Something went wrong';
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+// Persist the Supabase access token returned by login / Google callback.
+function saveAuthToken(token) {
+  if (token) localStorage.setItem('auth_token', token);
+}
+
+// ---------- Sign In (email + password) ----------
 const signInForm = document.getElementById('signInForm');
 
 if (signInForm) {
@@ -46,12 +76,21 @@ if (signInForm) {
       const btn = document.getElementById('signInSubmit');
       setLoading(btn, true);
 
-      // simulate a network request - replace with your real API call
-      setTimeout(() => {
-        setLoading(btn, false);
-        showToast('Signed in successfully', 'success');
-        signInForm.reset();
-      }, 1200);
+      postJSON('/api/auth/login', {
+        email: siEmail.value.trim(),
+        password: siPassword.value,
+      })
+        .then((data) => {
+          saveAuthToken(data.access_token);
+          showToast('Signed in successfully', 'success');
+          signInForm.reset();
+        })
+        .catch((err) => {
+          showToast(err.message, 'error');
+        })
+        .finally(() => {
+          setLoading(btn, false);
+        });
     }
   });
 
@@ -64,70 +103,32 @@ if (signInForm) {
   });
 }
 
-// ---------- Sign Up validation ----------
+// ---------- Google OAuth (sign in + sign up) ----------
+function redirectToGoogle(btn) {
+  setLoading(btn, true);
+  showToast('Redirecting to Google...');
+  setTimeout(() => {
+    window.location.href = API_BASE_URL + '/api/auth/google';
+  }, 600);
+}
+
+const googleSignInBtn = document.getElementById('googleSignInBtn');
+if (googleSignInBtn) {
+  googleSignInBtn.addEventListener('click', () => redirectToGoogle(googleSignInBtn));
+}
+
 const signUpForm = document.getElementById('signUpForm');
 
 if (signUpForm) {
-  const suName = document.getElementById('suName');
-  const suNameError = document.getElementById('suNameError');
-  const suEmail = document.getElementById('suEmail');
-  const suEmailError = document.getElementById('suEmailError');
-  const suPassword = document.getElementById('suPassword');
-  const suPasswordError = document.getElementById('suPasswordError');
+  const googleSignUpBtn = document.getElementById('googleSignUpBtn');
 
   signUpForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    let valid = true;
-
-    clearError(suName, suNameError);
-    clearError(suEmail, suEmailError);
-    clearError(suPassword, suPasswordError);
-
-    if (suName.value.trim() === '') {
-      showError(suName, suNameError, 'Name is required');
-      valid = false;
-    }
-
-    if (suEmail.value.trim() === '') {
-      showError(suEmail, suEmailError, 'Email is required');
-      valid = false;
-    } else if (!isValidEmail(suEmail.value.trim())) {
-      showError(suEmail, suEmailError, 'Please enter a valid email');
-      valid = false;
-    }
-
-    if (suPassword.value === '') {
-      showError(suPassword, suPasswordError, 'Password is required');
-      valid = false;
-    } else if (suPassword.value.length < 8) {
-      showError(suPassword, suPasswordError, 'Password must be at least 8 characters');
-      valid = false;
-    }
-
-    if (valid) {
-      const btn = document.getElementById('signUpSubmit');
-      setLoading(btn, true);
-
-      // simulate a network request - replace with your real API call
-      setTimeout(() => {
-        setLoading(btn, false);
-        showToast('Account created successfully', 'success');
-        signUpForm.reset();
-      }, 1200);
-    }
-  });
-
-  [suName, suEmail, suPassword].forEach((input) => {
-    input.addEventListener('input', () => {
-      const errorEl =
-        input === suName ? suNameError :
-        input === suEmail ? suEmailError : suPasswordError;
-      clearError(input, errorEl);
-    });
+    redirectToGoogle(googleSignUpBtn);
   });
 }
 
-// ---------- Forgot password validation ----------
+// ---------- Forgot password ----------
 const forgotFormEl = document.getElementById('forgotForm');
 
 if (forgotFormEl) {
@@ -150,21 +151,25 @@ if (forgotFormEl) {
     const btn = document.getElementById('forgotSubmit');
     setLoading(btn, true);
 
-    // simulate a network request - replace with your real API call
-    setTimeout(() => {
-      setLoading(btn, false);
+    postJSON('/api/auth/forgot-password', { email: forgotEmail.value.trim() })
+      .then(() => {
+        const sentTo = document.getElementById('forgotSentTo');
+        if (sentTo) sentTo.textContent = forgotEmail.value.trim();
 
-      const sentTo = document.getElementById('forgotSentTo');
-      if (sentTo) sentTo.textContent = forgotEmail.value.trim();
+        document.getElementById('forgotStepForm').hidden = true;
+        document.getElementById('forgotStepSuccess').hidden = false;
 
-      document.getElementById('forgotStepForm').hidden = true;
-      document.getElementById('forgotStepSuccess').hidden = false;
-
-      // auto-dismiss the modal after 10s so the user doesn't have to click "Back to sign in"
-      if (typeof scheduleForgotAutoClose === 'function') {
-        scheduleForgotAutoClose(10000);
-      }
-    }, 1200);
+        // auto-dismiss the modal after 8s so the user doesn't have to click "Back to sign in"
+        if (typeof scheduleForgotAutoClose === 'function') {
+          scheduleForgotAutoClose(8000);
+        }
+      })
+      .catch((err) => {
+        showToast(err.message, 'error');
+      })
+      .finally(() => {
+        setLoading(btn, false);
+      });
   });
 
   forgotEmail.addEventListener('input', () => {
