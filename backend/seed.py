@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.db import PLATFORM_ID, connect
+from app.db import PLATFORM_ID, connect, init_db
 from app.security import new_id
 
 STUDIO_ID = "usr_studio"
@@ -152,6 +152,9 @@ def _ensure_studio(db) -> None:
 
 
 def main() -> None:
+    # Make `python seed.py` safe on a brand-new checkout: create the schema and
+    # the default admin before inserting catalogue rows.
+    init_db()
     with connect() as db:
         _ensure_studio(db)
         wanted = {p[0] for p in PRODUCTS}

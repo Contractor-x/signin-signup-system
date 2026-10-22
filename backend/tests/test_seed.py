@@ -32,6 +32,25 @@ def test_seed_is_idempotent(tmp_path, monkeypatch):
     }
 
 
+def test_seed_initializes_a_fresh_database(tmp_path, monkeypatch):
+    # `python seed.py` is the first command a new checkout runs, so it must create
+    # the schema itself instead of assuming the API has started once.
+    monkeypatch.setattr(settings, "DB_PATH", str(tmp_path / "fresh.db"))
+
+    import seed
+
+    seed.main()
+
+    with connect() as db:
+        active = db.execute("SELECT COUNT(*) FROM products WHERE active=1").fetchone()[0]
+        admin = db.execute(
+            "SELECT role FROM users WHERE email='admin@sandbox.local'"
+        ).fetchone()
+
+    assert active == len(seed.PRODUCTS) == 12
+    assert admin is not None and admin["role"] == "superuser"
+
+
 def test_seed_retires_old_demo_catalogue(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "DB_PATH", str(tmp_path / "old.db"))
     init_db()
