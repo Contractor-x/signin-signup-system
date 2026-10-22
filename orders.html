@@ -3,86 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My orders · Sandbox Shop</title>
+  <title>Your orders — STILL</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C59D5F'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8D%3C/text%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shop.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23101210'/%3E%3Ctext x='16' y='24' font-family='Georgia,serif' font-size='20' text-anchor='middle' fill='%23f2efe7'%3ES%3C/text%3E%3C/svg%3E">
 </head>
 <body>
+<a class="skip" href="#ordersList">Skip to orders</a>
 
-<div id="toast" class="toast"></div>
+<div class="ticker">
+  <div class="wrap ticker__inner">
+    <span class="ticker__label"><span class="ticker__dot" aria-hidden="true"></span>Sandbox account</span>
+    <span class="ticker__mid">Payments here are simulated</span>
+    <span class="ticker__right">Lagos · NG</span>
+  </div>
+</div>
 
-<header class="site-header">
-  <div class="container header-inner">
-    <a href="store.html" class="brand"><span class="mark">🏺</span>Sandbox Shop</a>
-    <nav class="nav">
-      <a href="store.html" style="font-size:0.875rem;font-weight:500;color:var(--color-mute);">← Shop</a>
-      <button class="link" id="authBtn">Sign out</button>
+<header class="site-head">
+  <div class="wrap site-head__inner">
+    <a class="wordmark" href="store.html">STILL<span class="wordmark__mark">®</span></a>
+    <nav class="nav" aria-label="Primary">
+      <a href="store.html">Shop</a>
+      <a href="orders.html" aria-current="page">Orders</a>
     </nav>
+    <div class="head-actions">
+      <button class="cart-button" type="button" data-open-cart aria-label="Open bag, 0 items">
+        <span>Bag</span><span class="cart-count" data-cart-count>0</span>
+      </button>
+      <details class="account">
+        <summary class="account__summary">
+          <span class="account__name" data-user-name>Account</span>
+          <span class="account__role" data-user-role>Customer</span>
+        </summary>
+        <div class="account__panel">
+          <p class="account__email" data-user-email>Loading account…</p>
+          <a href="store.html">Continue shopping</a>
+          <button type="button" data-signout>Sign out</button>
+        </div>
+      </details>
+    </div>
   </div>
 </header>
 
-<section class="section">
-  <div class="container">
-    <div class="section-header">
-      <span class="eyebrow">Order history</span>
-      <h2>My orders</h2>
-      <p>Track your purchases and payments in the sandbox.</p>
+<main class="page">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow"><span class="eyebrow__line"></span>Account / Orders</p>
+      <div class="page-head__row">
+        <h1>Your orders</h1>
+        <p class="page-head__meta" id="orderCount">Loading…</p>
+      </div>
+    </header>
+
+    <div class="order-toolbar">
+      <div class="filters" id="orderFilters" role="group" aria-label="Filter orders">
+        <button type="button" class="filter" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" class="filter" data-filter="pending" aria-pressed="false">Pending</button>
+        <button type="button" class="filter" data-filter="paid" aria-pressed="false">Paid</button>
+        <button type="button" class="filter" data-filter="refunded" aria-pressed="false">Refunded</button>
+        <button type="button" class="filter" data-filter="canceled" aria-pressed="false">Canceled</button>
+      </div>
+      <a class="btn btn--ghost btn--small" href="store.html">← Back to the collection</a>
     </div>
 
-    <div id="ordersContainer"></div>
+    <div class="order-list" id="ordersList" aria-live="polite"></div>
+
+    <div class="empty" id="ordersEmpty" hidden>
+      <h3>No orders yet.</h3>
+      <p>When you buy something, the receipt and payment state live here.</p>
+      <a class="btn" href="store.html">Browse the collection <span>→</span></a>
+    </div>
+
+    <div class="load-error" id="ordersError" hidden>
+      <p><strong>Orders could not load.</strong> <span id="ordersErrorText"></span></p>
+      <button class="btn btn--ghost btn--small" type="button" id="retryOrders" style="margin-top:14px">Try again</button>
+    </div>
   </div>
-</section>
+</main>
+
+<dialog class="quick order-detail" id="orderDialog" aria-labelledby="orderDialogTitle">
+  <button class="quick__close" type="button" id="orderDialogClose" aria-label="Close order details">×</button>
+  <div class="order-detail__body" id="orderDialogBody"></div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="js/api.js"></script>
-<script>
-requireAuth();
-const $ = (id) => document.getElementById(id);
-const money = (minor, cur = 'NGN') =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-async function loadOrders() {
-  const { data } = await api('/api/store/orders');
-  const container = $('ordersContainer');
-  if (data.length === 0) {
-    container.innerHTML = `
-      <div class="card" style="text-align:center;padding:72px 20px;">
-        <span class="icon" style="font-size:2.5rem;">📦</span>
-        <h3 style="font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:1.5rem;margin-bottom:8px;">No orders yet</h3>
-        <p class="mute">Your purchases will appear here.</p>
-        <button class="btn btn--accent" style="margin-top:20px;" onclick="location.href='store.html'">Browse the shop</button>
-      </div>`;
-    return;
-  }
-  container.innerHTML = data.map((o) => `
-    <div class="card" style="margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:14px;">
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--color-accent);">#${esc(o.id.slice(-6))}</span>
-            <span class="pill pill--${o.status}">${esc(o.status.replace('_', ' '))}</span>
-          </div>
-          <div class="mute" style="font-size:0.875rem; margin-top:6px;">${esc(o.created_at)} · ${o.items.length} item${o.items.length !== 1 ? 's' : ''}</div>
-        </div>
-        <div style="text-align:right">
-          <div class="ink" style="font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:1.125rem;">${money(o.total_minor, o.currency)}</div>
-        </div>
-      </div>
-      <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        ${o.items.map(it => `<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F4F3F0;border:1px solid var(--color-line);font-size:0.875rem;">
-          <span style="font-weight:700; color:var(--color-ink);">${it.quantity}×</span> ${esc(it.name)}
-        </div>`).join('')}
-      </div>
-    </div>`).join('');
-}
-loadOrders();
-
-$('authBtn').textContent = token() ? 'Sign out' : 'Sign in';
-$('authBtn').onclick = () => { if (token()) { localStorage.removeItem('auth_token'); showToast('Signed out','success'); location.href = 'index.html'; } else { location.href = 'index.html'; } };
-</script>
-
+<script src="js/shop-ui.js"></script>
+<script src="js/orders.js"></script>
 </body>
 </html>

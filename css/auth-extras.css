@@ -1,0 +1,77 @@
+/* Additions for the sandbox auth page. Kept separate so the original slider
+   stylesheet stays untouched. */
+
+.sandbox-reset {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #E4E6EB;
+  text-align: left;
+}
+
+.sandbox-reset__toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #1877F2;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.sandbox-reset__panel {
+  margin-top: 10px;
+}
+
+.sandbox-reset__note {
+  margin-bottom: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #65676B;
+}
+
+.sandbox-reset__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sandbox-reset__fields input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #E4E6EB;
+  border-radius: 8px;
+  background: #F5F6F7;
+  font-size: 13px;
+}
+
+.sandbox-reset__fields input:focus {
+  outline: none;
+  border-color: #1877F2;
+  background: #fff;
+}
+
+.sandbox-reset__submit {
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: #1877F2;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sandbox-reset__submit:disabled { opacity: 0.6; cursor: wait; }
+
+.sandbox-reset__status {
+  min-height: 16px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #65676B;
+}
+
+.sandbox-reset__status.is-error { color: #FA383E; }
+.sandbox-reset__status.is-ok { color: #1E7A3E; }
