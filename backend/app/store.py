@@ -66,6 +66,7 @@ class ProductIn(BaseModel):
     stock: int = Field(ge=0, le=100000)
     emoji: str = Field("📦", max_length=8)
     image_url: str = Field("", max_length=500)
+    category: str = Field("Home", min_length=1, max_length=40)
     currency: str = "NGN"
 
 
@@ -96,17 +97,48 @@ class OtpIn(BaseModel):
 # ------------------------------------------------------------------- products
 def _product(r) -> dict:
     return {k: r[k] for k in ("id", "seller_id", "name", "description", "price_minor", "currency",
-                              "stock", "emoji", "image_url", "active")}
+                              "stock", "emoji", "image_url", "category", "active")}
+
+
+PRODUCT_SORTS = {
+    "featured": "p.rowid ASC",
+    "newest": "p.rowid DESC",
+    "price_asc": "p.price_minor ASC, p.rowid ASC",
+    "price_desc": "p.price_minor DESC, p.rowid ASC",
+    "name_asc": "p.name COLLATE NOCASE ASC",
+}
 
 
 @router.get("/products")
-def list_products(db: DB, q: str = ""):
+def list_products(db: DB, q: str = "", category: str = "", sort: str = "featured"):
+    """Public catalogue. Supports free-text search, category filter and sorting.
+
+    ``category=All`` is treated as no filter so the storefront can use one code
+    path for its "All" chip.
+    """
+    where, args = ["p.active=1"], []
+    if q.strip():
+        where.append("(p.name LIKE ? OR p.description LIKE ?)")
+        args.extend([f"%{q.strip()}%", f"%{q.strip()}%"])
+    if category.strip() and category.strip().lower() != "all":
+        where.append("LOWER(p.category)=LOWER(?)")
+        args.append(category.strip())
+    order = PRODUCT_SORTS.get(sort, PRODUCT_SORTS["featured"])
     rows = db.execute(
         "SELECT p.*, u.username seller FROM products p JOIN users u ON u.id=p.seller_id "
-        "WHERE p.active=1 AND (p.name LIKE ? OR p.description LIKE ?) ORDER BY p.rowid DESC LIMIT 100",
-        (f"%{q}%", f"%{q}%"),
+        f"WHERE {' AND '.join(where)} ORDER BY {order} LIMIT 100",
+        args,
     ).fetchall()
     return {"data": [{**_product(r), "seller": r["seller"]} for r in rows]}
+
+
+@router.get("/categories")
+def list_categories(db: DB):
+    rows = db.execute(
+        "SELECT category, COUNT(*) AS count FROM products WHERE active=1 "
+        "GROUP BY category ORDER BY category COLLATE NOCASE"
+    ).fetchall()
+    return {"data": [dict(r) for r in rows]}
 
 
 @router.get("/my/products")
@@ -121,10 +153,10 @@ def create_product(body: ProductIn, db: DB, user: ShopOwner):
         raise ApiError(422, "invalid_currency", "Unsupported currency")
     pid = new_id("prd")
     db.execute(
-        "INSERT INTO products(id,seller_id,name,description,price_minor,currency,stock,emoji,image_url) "
-        "VALUES(?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO products(id,seller_id,name,description,price_minor,currency,stock,emoji,image_url,category) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?)",
         (pid, user["id"], body.name.strip(), body.description, body.price_minor,
-         body.currency.upper(), body.stock, body.emoji, body.image_url),
+         body.currency.upper(), body.stock, body.emoji, body.image_url, body.category.strip()),
     )
     audit(db, user["id"], "product.create", pid)
     return _product(db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone())
@@ -143,8 +175,9 @@ def update_product(pid: str, body: ProductIn, db: DB, user: CurrentUser):
         raise ApiError(404, "resource_missing", "No such product")
     _own_product(db, user, pid)
     db.execute(
-        "UPDATE products SET name=?,description=?,price_minor=?,stock=?,emoji=?,image_url=? WHERE id=?",
-        (body.name.strip(), body.description, body.price_minor, body.stock, body.emoji, body.image_url, pid),
+        "UPDATE products SET name=?,description=?,price_minor=?,stock=?,emoji=?,image_url=?,category=? WHERE id=?",
+        (body.name.strip(), body.description, body.price_minor, body.stock, body.emoji,
+         body.image_url, body.category.strip(), pid),
     )
     return _product(db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone())
 
@@ -167,7 +200,8 @@ def _order(db, row) -> dict:
         pi.pop("client_secret", None)
         pay = pi
     return {"id": row["id"], "status": row["status"], "total_minor": row["total_minor"], "currency": row["currency"],
-            "created_at": row["created_at"], "items": [dict(i) for i in items], "payment": pay}
+            "created_at": row["created_at"], "items": [dict(i) for i in items],
+            "shipping": json.loads(row["shipping"]) if row["shipping"] else None, "payment": pay}
 
 
 def _my_order(db, user, oid: str):
@@ -319,8 +353,9 @@ def admin_update_product(pid: str, body: ProductIn, db: DB, _admin: Superuser):
     if body.currency.upper() not in payments.CURRENCIES:
         raise ApiError(422, "invalid_currency", "Unsupported currency")
     db.execute(
-        "UPDATE products SET name=?,description=?,price_minor=?,stock=?,emoji=?,image_url=? WHERE id=?",
-        (body.name.strip(), body.description, body.price_minor, body.stock, body.emoji, body.image_url, pid),
+        "UPDATE products SET name=?,description=?,price_minor=?,stock=?,emoji=?,image_url=?,category=? WHERE id=?",
+        (body.name.strip(), body.description, body.price_minor, body.stock, body.emoji,
+         body.image_url, body.category.strip(), pid),
     )
     return _product(db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone())
 

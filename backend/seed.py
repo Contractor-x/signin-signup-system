@@ -1,8 +1,13 @@
-"""Seed the sandbox shop with a curated, aesthetic product catalogue.
+"""Seed the sandbox shop with a curated design-objects catalogue.
 
-Each product uses a real, freely-hosted product photo (Unsplash Source) so the
-storefront looks polished out of the box. Safe to re-run: it only inserts
-products that don't already exist (matched by name).
+The catalogue is deliberately small and opinionated: twelve useful objects,
+real photography and honest copy. Running this file more than once is safe:
+
+* products are matched by name and updated in place, never duplicated;
+* stock and prices are left alone after the first insert, so an admin edit is
+  not silently reverted by a later seed;
+* old demo-catalogue rows owned by the sandbox shop are retired, while
+  products listed by real shop owners are never touched.
 """
 
 import sys
@@ -10,78 +15,184 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.db import connect, PLATFORM_ID
+from app.db import PLATFORM_ID, connect
 from app.security import new_id
 
-# (name, description, price_naira, stock, emoji, image_url)
+STUDIO_ID = "usr_studio"
+
+# The demo catalogue is owned by a dedicated shop-owner account so the
+# storefront can display a real seller name.
+STUDIO = {
+    "id": STUDIO_ID,
+    "email": "studio@sandbox.local",
+    "username": "Atelier Sandbox",
+    "password_hash": "!disabled",  # cannot log in; catalogue account only
+    "role": "shop_owner",
+}
+
+# (name, description, price_naira, stock, emoji, image_url, category)
 PRODUCTS = [
-    ("Ceramic Morning Mug",
-     "Hand-thrown stoneware mug, matte glaze, dishwasher safe. 350 ml.",
-     4500, 24, "\U0001F375",
-     "https://images.unsplash.com/photo-1510707585788-02b0a1a8a8f2?w=800&q=80&auto=format&fit=crop"),
-    ("Linen Tote Bag",
-     "Heavyweight natural linen tote with reinforced handles. Perfect for groceries or books.",
-     6200, 30, "\U0001F45C",
-     "https://images.unsplash.com/photo-1551098910-a09131640166?w=800&q=80&auto=format&fit=crop"),
-    ("Olive Wood Cutting Board",
-     "Sustainably sourced olive wood, end-grain construction. Each board is unique.",
-     18500, 12, "\U0001F9C0\U0001F3FC",
-     "https://images.unsplash.com/photo-1592676633189-5e0a6a9a9301?w=800&q=80&auto=format&fit=crop"),
-    ("Wool Throw Blanket",
-     "Merino wool throw, brushed finish. Keeps you warm in winter, breathable in summer.",
-     32000, 18, "\U0001F9F3",
-     "https://images.unsplash.com/photo-1579785933121-fb9c1359999b?w=800&q=80&auto=format&fit=crop"),
-    ("Terrazzo Plant Pot",
-     "Cement terrazzo pot with drainage hole and matching saucer. Indoor use.",
-     9800, 26, "\U0001F331",
-     "https://images.unsplash.com/photo-1595160677143-e1208eb87e41?w=800&q=80&auto=format&fit=crop"),
-    ("Espresso Glass Set (2)",
-     "Double-wall borosilicate glass, keeps espresso hot and hands cool.",
-     11500, 20, "\U00002615\U0001F3FB",
-     "https://images.unsplash.com/photo-1514428477400-5d2c3a8733be?w=800&q=80&auto=format&fit=crop"),
-    ("Cotton Bed Sheet Set",
-     "100% cotton sateen, 400 thread count. Fitted sheet, flat sheet, 2 pillowcases.",
-     24000, 15, "\U0001F426",
-     "https://images.unsplash.com/photo-1616475820631-809b66fd1e2d?w=800&q=80&auto=format&fit=crop"),
-    ("Bamboo Bath Caddy",
-     "Extendable bamboo caddy with slots for a book, phone, glass of wine and candle.",
-     7400, 22, "\U0001F6C0\U0001F3FC",
-     "https://images.unsplash.com/photo-1580863779393-fb0c7575a79f?w=800&q=80&auto=format&fit=crop"),
-    ("Cast Iron Skillet",
-     "Pre-seasoned 26 cm skillet, oven-safe, lasts generations with care.",
-     21000, 14, "\U0001F924\U0001F3FC",
-     "https://images.unsplash.com/photo-1583956220462-75285989e372?w=800&q=80&auto=format&fit=crop"),
-    ("Soy Candle - Santal",
-     "Hand-poured soy wax with sandalwood & amber essential oils. 45-hour burn.",
-     5800, 40, "\U0001F3F1\U0001F3FB",
-     "https://images.unsplash.com/photo-1606086535210-2990f977dc03?w=800&q=80&auto=format&fit=crop"),
-    ("Canvas Weekender Bag",
-     "Waxed canvas weekender with leather trim. Fits a laptop and change of clothes.",
-     41000, 10, "\U0001F4F2",
-     "https://images.unsplash.com/photo-1553063449-031e2b7d843e?w=800&q=80&auto=format&fit=crop"),
-    ("Marble Coasters (Set of 4)",
-     "Natural marble with felt backing. Protects tables in style.",
-     6900, 32, "\U0001F973",
-     "https://images.unsplash.com/photo-1600585154340-be6161a56a10?w=800&q=80&auto=format&fit=crop"),
+    (
+        "Arc Counter Stool",
+        "Solid oak with a powder-coated steel footrest. 66 cm seat height, "
+        "built for long mornings at the counter.",
+        78000, 14, "🪑",
+        "https://images.unsplash.com/photo-1503602642458-232111445657"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Furniture",
+    ),
+    (
+        "Pivot Lounge Chair",
+        "A moulded shell on a solid ash base. Low, wide and unexpectedly "
+        "comfortable — the chair everyone reaches for.",
+        145000, 9, "🪑",
+        "https://images.unsplash.com/photo-1592078615290-033ee584e267"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Furniture",
+    ),
+    (
+        "Moss Velvet Sofa",
+        "Three generous seats in dense cotton velvet. Solid beech frame, "
+        "feather-wrapped cushions, removable covers.",
+        480000, 4, "🛋️",
+        "https://images.unsplash.com/photo-1555041469-a586c61ea9bc"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Furniture",
+    ),
+    (
+        "Tan Leather Sofa",
+        "Full-grain leather that softens with use. Three seats, low arms and "
+        "solid oak feet. A piece that gets better with age.",
+        520000, 3, "🛋️",
+        "https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg"
+        "?auto=compress&cs=tinysrgb&w=900&h=1125&fit=crop",
+        "Furniture",
+    ),
+    (
+        "Studio Mug",
+        "Stoneware mug with a generous handle and a satin glaze. 350 ml, "
+        "dishwasher safe, made for the second cup.",
+        12500, 36, "☕",
+        "https://images.unsplash.com/photo-1544787219-7f47ccb76574"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Kitchen",
+    ),
+    (
+        "Everyday Flask",
+        "Double-wall stainless steel, 500 ml. Keeps coffee hot for six hours "
+        "and fits the side pocket of almost any bag.",
+        18000, 28, "🧴",
+        "https://images.unsplash.com/photo-1602143407151-7111542de6e8"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Objects",
+    ),
+    (
+        "Field Watch",
+        "Brushed aluminium case, sapphire face and a soft silicone strap. "
+        "Water-resistant to 50 m, quietly precise.",
+        95000, 11, "⌚",
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Objects",
+    ),
+    (
+        "Instant Camera",
+        "Point-and-shoot instant camera with a built-in flash. Uses standard "
+        "instant film — the good kind of slow.",
+        165000, 7, "📷",
+        "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Objects",
+    ),
+    (
+        "Knit Runner",
+        "Lightweight knit upper on a cushioned sole. Made for the walk that "
+        "turns into a run.",
+        72000, 16, "👟",
+        "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Apparel",
+    ),
+    (
+        "Leather Mini Bag",
+        "Structured mini bag in pebbled leather. Fits a phone, cardholder and "
+        "keys — nothing more, which is the point.",
+        88000, 12, "👜",
+        "https://images.unsplash.com/photo-1594223274512-ad4803739b7c"
+        "?w=900&h=1125&fit=crop&crop=entropy&q=80&auto=format",
+        "Carry",
+    ),
+    (
+        "Single Origin Coffee",
+        "Washed Ethiopian beans roasted for filter. Notes of peach, jasmine "
+        "and brown sugar. 250 g, whole bean.",
+        9500, 42, "☕",
+        "https://images.pexels.com/photos/585750/pexels-photo-585750.jpeg"
+        "?auto=compress&cs=tinysrgb&w=900&h=1125&fit=crop",
+        "Kitchen",
+    ),
+    (
+        "Botanical Face Oil",
+        "Cold-pressed rosehip and squalane. Three drops, morning and night, "
+        "and a minute that belongs to you.",
+        24000, 25, "🧴",
+        "https://images.pexels.com/photos/4041392/pexels-photo-4041392.jpeg"
+        "?auto=compress&cs=tinysrgb&w=900&h=1125&fit=crop",
+        "Apothecary",
+    ),
 ]
 
-INSERT = """
-INSERT OR IGNORE INTO products(id, seller_id, name, description, price_minor, currency, stock, emoji, image_url)
-VALUES (?, ?, ?, ?, ?, 'NGN', ?, ?, ?)
-"""
+
+def _ensure_studio(db) -> None:
+    db.execute(
+        "INSERT OR IGNORE INTO users(id,email,username,password_hash,role) VALUES(?,?,?,?,?)",
+        (STUDIO["id"], STUDIO["email"], STUDIO["username"],
+         STUDIO["password_hash"], STUDIO["role"]),
+    )
+
 
 def main() -> None:
     with connect() as db:
-        # Use the platform merchant as the seed seller so products are visible
-        # to every shop owner. A real shop owner would list their own items.
-        seller_id = PLATFORM_ID
-        count = 0
-        for name, desc, price, stock, emoji, image in PRODUCTS:
-            pid = new_id("prd")
-            db.execute(INSERT, (pid, seller_id, name, desc, price * 100, stock, emoji, image))
-            count += 1
+        _ensure_studio(db)
+        wanted = {p[0] for p in PRODUCTS}
+        inserted = updated = 0
+
+        for name, desc, price, stock, emoji, image, category in PRODUCTS:
+            existing = db.execute(
+                "SELECT id FROM products WHERE name=? AND seller_id IN (?,?) "
+                "ORDER BY rowid LIMIT 1",
+                (name, STUDIO_ID, PLATFORM_ID),
+            ).fetchone()
+            if existing:
+                db.execute(
+                    "UPDATE products SET seller_id=?, description=?, emoji=?, image_url=?, "
+                    "category=?, active=1 WHERE id=?",
+                    (STUDIO_ID, desc, emoji, image, category, existing["id"]),
+                )
+                updated += 1
+            else:
+                db.execute(
+                    "INSERT INTO products(id,seller_id,name,description,price_minor,currency,"
+                    "stock,emoji,image_url,category) VALUES(?,?,?,?,?,'NGN',?,?,?,?)",
+                    (new_id("prd"), STUDIO_ID, name, desc, price * 100, stock,
+                     emoji, image, category),
+                )
+                inserted += 1
+
+        # Retire older demo rows, but never touch a real shop owner's products.
+        marks = ",".join("?" for _ in wanted)
+        retired = db.execute(
+            f"UPDATE products SET active=0 WHERE seller_id IN (?,?) AND active=1 "
+            f"AND name NOT IN ({marks})",
+            (STUDIO_ID, PLATFORM_ID, *sorted(wanted)),
+        ).rowcount
         db.commit()
-    print(f"Seeded {count} products into the sandbox shop.")
+
+    print(
+        f"Seeded shop: {inserted} inserted, {updated} updated, "
+        f"{retired} old demo products retired."
+    )
+
 
 if __name__ == "__main__":
     main()

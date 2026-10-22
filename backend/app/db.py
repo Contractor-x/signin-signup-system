@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS products(
   stock INTEGER NOT NULL CHECK(stock>=0),
   emoji TEXT DEFAULT '📦',
   image_url TEXT DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'Home',
   active INTEGER DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS orders(
@@ -139,10 +140,12 @@ def init_db() -> None:
         cols = {r["name"] for r in db.execute("PRAGMA table_info(users)")}
         if "role" not in cols:
             db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'")
-        # Backfill image_url for older product schemas.
+        # Backfill image_url / category for older product schemas.
         pcols = {r["name"] for r in db.execute("PRAGMA table_info(products)")}
         if "image_url" not in pcols:
             db.execute("ALTER TABLE products ADD COLUMN image_url TEXT DEFAULT ''")
+        if "category" not in pcols:
+            db.execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'Home'")
         # Internal platform merchant that owns the storefront's payments.
         # It cannot log in (password hash is a disabled marker).
         db.execute(

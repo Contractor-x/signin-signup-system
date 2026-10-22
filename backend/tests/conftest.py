@@ -1,10 +1,12 @@
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 
 # Point the sandbox DB at a temp file before the app imports settings/db.
-os.environ["DB_PATH"] = os.path.join(tempfile.gettempdir(), "sandbox_test.db")
+DB_FILE = os.path.join(tempfile.gettempdir(), "sandbox_test.db")
+os.environ["DB_PATH"] = DB_FILE
 os.environ["SANDBOX_DEV"] = "1"
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -15,6 +17,10 @@ from app.main import app  # noqa: E402
 
 @pytest.fixture(scope="session", autouse=True)
 def init_database():
+    # Tests share one database, so start from a clean slate every run. Without
+    # this a leftover file makes signup assertions fail on the second run.
+    for suffix in ("", "-shm", "-wal"):
+        Path(DB_FILE + suffix).unlink(missing_ok=True)
     init_db()
 
 

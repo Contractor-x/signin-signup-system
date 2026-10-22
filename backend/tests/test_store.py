@@ -81,3 +81,31 @@ def test_access_control_and_rules(client, shop, make_user):
     assert client.put(f"/api/store/products/{p['id']}", headers=other, json={"name": "Hacked", "price_minor": 1, "stock": 1}).status_code == 404
     assert client.post("/api/store/orders", json={"items": [], "shipping": SHIP}).status_code == 401
     assert client.get("/api/store/products").status_code == 200  # catalog is public
+
+
+def test_catalog_category_filter_sort_and_shipping(client, shop):
+    seller, buyer, p = shop
+    for name, price, category in (
+        ("Test Kettle", 900000, "TestKitchen"),
+        ("Test Bench", 2500000, "TestFurniture"),
+        ("Test Spoon", 450000, "TestKitchen"),
+    ):
+        r = client.post(
+            "/api/store/products",
+            headers=seller,
+            json={"name": name, "price_minor": price, "stock": 2, "category": category},
+        )
+        assert r.status_code == 201, r.text
+
+    kitchen = client.get("/api/store/products?category=TestKitchen&sort=price_asc").json()["data"]
+    assert [p["name"] for p in kitchen] == ["Test Spoon", "Test Kettle"]
+    assert all(p["category"] == "TestKitchen" for p in kitchen)
+
+    categories = client.get("/api/store/categories").json()["data"]
+    by_name = {c["category"]: c["count"] for c in categories}
+    assert by_name["TestKitchen"] == 2
+    assert by_name["TestFurniture"] == 1
+
+    o = order(client, buyer, p).json()
+    assert o["shipping"]["name"] == SHIP["name"]
+    assert o["shipping"]["address"] == SHIP["address"]
