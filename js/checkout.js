@@ -583,29 +583,27 @@
     if (state.fromCart) ShopUI.clear();
     summary.hidden = true;
     checkoutGrid.style.gridTemplateColumns = '1fr';
-    const payment = ShopUI.paymentLabel(order);
+    document.title = 'Receipt — STILL';
 
     checkoutMain.innerHTML = `
-      <div class="success">
+      <div class="success success--receipt">
         <div class="success__mark" aria-hidden="true">✓</div>
         <p class="eyebrow" style="justify-content:center">Payment complete</p>
         <h1>That’s yours.</h1>
         <p class="success__lede">
-          Order ${orderNumber(order.id)} is paid. This was a sandbox payment, so
-          no money moved and nothing will ship.
+          Order ${orderNumber(order.id)} is paid. Your receipt is below.
         </p>
-        <div class="receipt-card">
-          <div class="receipt-card__row"><span>Order</span><span>${esc(order.id)}</span></div>
-          <div class="receipt-card__row"><span>Placed</span><span>${esc(formatDate(order.created_at))}</span></div>
-          <div class="receipt-card__row"><span>Payment</span><span>${esc(payment)}</span></div>
-          <div class="receipt-card__row"><span>Status</span><span>Paid</span></div>
-          <div class="receipt-card__row receipt-card__row--total"><span>Total</span><span>${money(order.total_minor, order.currency)}</span></div>
-        </div>
+
+        ${ShopUI.receiptHTML(order, state.me)}
+
         <div class="success__actions">
-          <a class="btn" href="orders.html">View your orders <span>→</span></a>
+          <button class="btn" type="button" data-print-receipt>Print receipt <span>↗</span></button>
+          <a class="btn btn--ghost" href="orders.html">View your orders</a>
           <a class="btn btn--ghost" href="store.html">Continue shopping</a>
         </div>
       </div>`;
+
+    checkoutMain.querySelector('[data-print-receipt]')?.addEventListener('click', () => window.print());
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

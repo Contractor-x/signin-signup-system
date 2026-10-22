@@ -121,48 +121,21 @@
 
   function openDetails(order) {
     const pending = ['pending_payment', 'payment_failed'].includes(order.status);
-    const shipping = order.shipping || {};
-    const payment = order.payment || {};
     const meta = statusMeta(order.status);
 
     dialogBody.innerHTML = `
-      <p class="eyebrow">Order detail ${statusPill(order.status)}</p>
-      <h2 id="orderDialogTitle">${orderNumber(order.id)}</h2>
-      <p class="order-detail__meta">
-        Placed ${esc(formatDate(order.created_at))} · ${esc(meta.label)}
-      </p>
-
-      <div class="order-detail__list">
-        ${order.items.map((item) => `
-          <div class="order-detail__line">
-            <span>${esc(item.name)}</span>
-            <span>Qty ${item.quantity} × ${money(item.unit_minor, order.currency)}</span>
-            <strong>${money(item.unit_minor * item.quantity, order.currency)}</strong>
-          </div>`).join('')}
-      </div>
-
-      <div class="order-detail__grid">
-        <div>
-          <h3>Delivery</h3>
-          <p>
-            ${esc(shipping.name || '—')}<br>
-            ${esc(shipping.address || '—')}<br>
-            ${esc(shipping.phone || '')}
-          </p>
+      <div class="receipt-modal">
+        <div class="receipt-modal__head">
+          <div>
+            <p class="eyebrow" id="orderDialogTitle">Receipt ${statusPill(order.status)}</p>
+            <p class="order-detail__meta">${esc(meta.label)} · ${esc(ShopUI.orderNumber(order.id))}</p>
+          </div>
+          <button class="btn btn--ghost btn--small" type="button" data-print-receipt>Print</button>
         </div>
-        <div>
-          <h3>Payment</h3>
-          <p>
-            ${esc(ShopUI.paymentLabel(order))}<br>
-            ${esc(payment.status || order.status)}<br>
-            ${money(order.total_minor, order.currency)}
-          </p>
-        </div>
-      </div>
 
-      <div class="order-detail__foot">
-        <span class="order-detail__total">${money(order.total_minor, order.currency)}</span>
-        <div class="order-card__actions">
+        ${ShopUI.receiptHTML(order, ShopUI.state.me)}
+
+        <div class="receipt-modal__actions">
           ${pending
             ? `<a class="btn btn--small" href="checkout.html?order=${encodeURIComponent(order.id)}">Complete payment</a>
                <button class="btn btn--ghost btn--small" type="button" data-cancel="${esc(order.id)}">Cancel order</button>`
@@ -214,6 +187,7 @@
     dialogBody.addEventListener('click', (event) => {
       const cancel = event.target.closest('[data-cancel]');
       if (cancel) cancelOrder(cancel.dataset.cancel);
+      if (event.target.closest('[data-print-receipt]')) window.print();
       if (event.target.closest('[data-close-detail]')) dialog.close();
     });
 

@@ -259,6 +259,126 @@ const ShopUI = (() => {
     return method.type || 'Payment';
   }
 
+  function receiptDateTime(value) {
+    if (!value) return { date: '—', time: '' };
+    const raw = String(value);
+    const date = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T') + 'Z');
+    if (Number.isNaN(date.getTime())) return { date: raw, time: '' };
+    return {
+      date: new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      }).format(date),
+      time: new Intl.DateTimeFormat('en-GB', {
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      }).format(date),
+    };
+  }
+
+  function receiptBarcode(id) {
+    let seed = 2166136261;
+    for (const char of String(id || '')) {
+      seed ^= char.charCodeAt(0);
+      seed = Math.imul(seed, 16777619) >>> 0;
+    }
+    let bars = '';
+    for (let i = 0; i < 54; i += 1) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      const width = 1 + (seed % 3);
+      const height = 28 + (seed % 15);
+      bars += `<i style="width:${width}px;height:${height}px"></i>`;
+    }
+    return `<div class="paper-receipt__barcode" aria-hidden="true">${bars}</div>`;
+  }
+
+  /**
+   * A thermal-printer style receipt, inspired by Receiptable's default layout.
+   * Everything is local: no receipt API or external renderer is used.
+   */
+  function receiptHTML(order, me) {
+    if (!order) return '';
+    const shipping = order.shipping || {};
+    const status = order.status;
+    const isPaid = status === 'paid' || status === 'refunded';
+    const isRefunded = status === 'refunded';
+    const total = money(order.total_minor, order.currency);
+    const paidAmount = isPaid ? total : money(0, order.currency);
+    const balance = isPaid ? money(0, order.currency) : total;
+    const dateTime = receiptDateTime(order.created_at);
+    const itemRows = (order.items || []).map((item) => `
+      <div class="paper-receipt__item">
+        <span>${esc(item.quantity)} × ${esc(item.name)}</span>
+        <span>${money(item.unit_minor * item.quantity, order.currency)}</span>
+      </div>`).join('');
+    const stars = '*'.repeat(42);
+
+    return `
+      <article class="paper-receipt" aria-label="Receipt for order ${esc(order.id)}">
+        <header class="paper-receipt__store">
+          <p class="paper-receipt__brand">STILL</p>
+          <p>OBJECTS FOR LIVING</p>
+          <p>Lagos, Nigeria</p>
+          <p>still-sandbox.local</p>
+        </header>
+
+        <div class="paper-receipt__meta">
+          <div><span>Order #:</span><span>${esc(String(order.id || '').toUpperCase())}</span></div>
+          <div><span>Date:</span><span>${esc(dateTime.date)}</span></div>
+          <div><span>Time:</span><span>${esc(dateTime.time)}</span></div>
+          <div><span>Served by:</span><span>STILL / SANDBOX</span></div>
+        </div>
+
+        ${shipping.name ? `
+          <div class="paper-receipt__customer">
+            <p><strong>Customer:</strong></p>
+            <p>${esc(shipping.name)}</p>
+            ${me?.email ? `<p>Email: ${esc(me.email)}</p>` : ''}
+            ${shipping.phone ? `<p>Tel: ${esc(shipping.phone)}</p>` : ''}
+            ${shipping.address ? `<p>${esc(shipping.address)}</p>` : ''}
+          </div>` : ''}
+
+        <div class="paper-receipt__rule"></div>
+
+        <div class="paper-receipt__columns">
+          <span>Item</span>
+          <span>Price</span>
+        </div>
+
+        <div class="paper-receipt__rule"></div>
+
+        <div class="paper-receipt__items">
+          ${itemRows || '<p class="paper-receipt__empty">No items</p>'}
+        </div>
+
+        <div class="paper-receipt__rule"></div>
+
+        <div class="paper-receipt__totals">
+          <div><span>Subtotal:</span><span>${total}</span></div>
+          <div><span>Shipping:</span><span>Free</span></div>
+          <div class="paper-receipt__stars">${stars}</div>
+          <div class="paper-receipt__grand-total"><span>TOTAL:</span><span>${total}</span></div>
+        </div>
+
+        <div class="paper-receipt__payment">
+          <div><span>Payment Method:</span><span>${esc(paymentLabel(order))}</span></div>
+          <div><span>Amount Paid:</span><span>${paidAmount}</span></div>
+          ${isRefunded
+            ? `<div><span>Refunded:</span><span>${total}</span></div><div><span>Balance Due:</span><span>${money(0, order.currency)}</span></div>`
+            : `<div><span>Balance Due:</span><span>${balance}</span></div>`}
+          <div><span>Change Due:</span><span>${money(0, order.currency)}</span></div>
+        </div>
+
+        <div class="paper-receipt__stars paper-receipt__stars--footer">${stars}</div>
+
+        <footer class="paper-receipt__footer">
+          <p>Thank you for buying less, better.</p>
+          <p>This is a sandbox receipt. No real money moved.</p>
+          <p class="paper-receipt__footer-id">Receipt ID: ${esc(String(order.id || '').toUpperCase())}</p>
+          ${receiptBarcode(order.id)}
+          <p class="paper-receipt__barcode-value">${esc(String(order.id || '').toUpperCase())}</p>
+        </footer>
+      </article>`;
+  }
+
   function wireImageFallbacks(root = document) {
     root.querySelectorAll('img').forEach((img) => {
       if (img.dataset.fallbackWired) return;
@@ -339,6 +459,7 @@ const ShopUI = (() => {
     statusMeta,
     orderNumber,
     paymentLabel,
+    receiptHTML,
     wireImageFallbacks,
     signOut,
     init,
