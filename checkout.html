@@ -4,50 +4,82 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checkout · Sandbox Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231877F2'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8A%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C59D5F'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8D%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
 <div id="toast" class="toast"></div>
 
-<header class="top">
-  <span class="brand">🛍️ Sandbox Shop</span>
-  <a href="store.html" class="link">← Back to shop</a>
-  <button class="link" id="authBtn">Sign out</button>
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="store.html" class="brand"><span class="mark">🏺</span>Sandbox Shop</a>
+    <a href="store.html" style="font-size:0.875rem;font-weight:500;color:var(--color-mute);">← Back to shop</a>
+    <button class="link" id="authBtn">Sign out</button>
+  </div>
 </header>
 
 <section class="section">
   <div class="container">
-    <div class="card" style="padding:24px;max-width:560px;margin:0 auto;">
-      <h2 style="margin-bottom:16px;">Checkout</h2>
-      <div class="form-field"><label>Full name</label><input type="text" id="shName" placeholder="Ada Lovelace" required></div>
-      <div class="form-field"><label>Delivery address</label><input type="text" id="shAddr" placeholder="12 Marina Road, Lagos" required></div>
-      <div class="form-field"><label>Phone</label><input type="tel" id="shPhone" placeholder="0801 234 5678" required></div>
-      <div class="form-field"><label>Order total (NGN)</label><input type="text" id="shTotal" readonly style="background:#f0f2f5;"></div>
-      <p class="mute" style="font-size:0.8rem;">🧪 Sandbox test mode — no real money. Use test card 4242 4242 4242 4242.</p>
-      <button class="btn btn--primary btn--full btn--lg" id="btnCheckout">Place order &amp; pay</button>
+    <div style="max-width:640px;margin:0 auto;">
+      <span class="hero-eyebrow" style="margin-bottom:16px;">Complete your order</span>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:2rem;line-height:1.2;margin-bottom:28px;">Checkout</h1>
+
+      <div class="card" style="padding:32px;">
+        <div class="form-field">
+          <label>Full name</label>
+          <input type="text" id="shName" placeholder="Ada Lovelace" required>
+        </div>
+        <div class="form-field">
+          <label>Delivery address</label>
+          <input type="text" id="shAddr" placeholder="12 Marina Road, Lagos" required>
+        </div>
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" id="shPhone" placeholder="0801 234 5678" required>
+        </div>
+        <div class="form-field">
+          <label>Order total (NGN)</label>
+          <input type="text" id="shTotal" readonly style="background:#F4F3F0;">
+        </div>
+        <p class="mute" style="font-size:0.8125rem;">🧪 Sandbox test mode — no real money. Try card 4242 4242 4242 4242.</p>
+        <button class="btn btn--accent btn--full btn--lg" id="btnCheckout">Place order &amp; pay</button>
+      </div>
     </div>
   </div>
 </section>
 
-<div class="modal" id="payModal"><div class="box" id="payBox"></div></div>
+<div class="modal-overlay" id="payModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 id="payTitle">Pay for your order</h3>
+      <button class="modal-close" id="payClose">&times;</button>
+    </div>
+    <div class="modal-body" id="payBox"></div>
+    <div class="modal-footer" id="payFooter"></div>
+  </div>
+</div>
 
 <script src="js/api.js"></script>
 <script>
 requireAuth();
 
 const $ = (id) => document.getElementById(id);
+const money = (minor, cur = 'NGN') =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const open = (id) => $(id).classList.add('open');
 const close = (id) => $(id).classList.remove('open');
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const money = (minor, cur = 'NGN') => new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
 
-// load cart
 async function init() {
   const cart = JSON.parse(localStorage.getItem('cart') || '{}');
   const ids = Object.keys(cart);
   if (ids.length === 0) { location.href = 'store.html'; return; }
+
   const { data: products } = await api('/api/store/products', { auth: false });
   const byId = Object.fromEntries(products.map(p => [p.id, p]));
   let total = 0;
@@ -55,42 +87,54 @@ async function init() {
   $('shTotal').value = money(total, 'NGN');
 
   $('btnCheckout').onclick = async () => {
-    if (!$('shName').value || !$('shAddr').value || !$('shPhone').value) { toast('Fill in delivery details', 'error'); return; }
+    if (!$('shName').value || !$('shAddr').value || !$('shPhone').value) { showToast('Fill in delivery details', 'error'); return; }
     const order = {
       items: ids.map(id => ({ product_id: id, quantity: cart[id] })),
       shipping: { name: $('shName').value, address: $('shAddr').value, phone: $('shPhone').value },
     };
     try {
       const created = await api('/api/store/orders', { method: 'POST', body: order });
-      toast('Order created');
+      showToast('Order created', 'success');
       open('payModal');
-      showPay(created);
-    } catch (e) { toast(e.message, 'error'); }
+      renderPay(created);
+    } catch (e) { showToast(e.message, 'error'); }
   };
 }
 init();
 
-async function showPay(order) {
+async function renderPay(order) {
   const testData = await api('/sandbox/v1/test-cards', { auth: false });
   let method = 'card';
   const box = $('payBox');
+  const footer = $('payFooter');
+
   function render() {
     box.innerHTML = `
-      <h3>Pay ${money(order.total_minor, order.currency)}</h3>
-      <div class="hint">🧪 Sandbox: use a test card. Real cards are rejected.</div>
-      <div class="tabs"><button class="tab on" data-m="card">Card</button><button class="tab" data-m="wallet">Mobile wallet</button><button class="tab" data-m="bank_transfer">Bank transfer</button></div>
+      <div class="ink" style="font-weight:700;font-size:1.125rem;margin-bottom:20px;">${money(order.total_minor, order.currency)}</div>
+      <p class="mute" style="font-size:0.8125rem; margin-bottom:24px;">🧪 Sandbox: use a test card. Real cards are rejected.</p>
+
+      <div class="tabs" style="display:flex;gap:8px;margin-bottom:24px;">
+        <button class="tab btn" data-m="card" style="flex:1;padding:12px;border:1px solid var(--color-accent);color:var(--color-accent);background:transparent;">Card</button>
+        <button class="tab btn" data-m="wallet" style="flex:1;padding:12px;border:1px solid var(--color-line);color:var(--color-mute);background:transparent;">Mobile wallet</button>
+        <button class="tab btn" data-m="bank_transfer" style="flex:1;padding:12px;border:1px solid var(--color-line);color:var(--color-mute);background:transparent;">Bank transfer</button>
+      </div>
+
       <div id="mCard">
         <div class="form-field"><label>Test scenario</label><select id="scen">${testData.cards.map(c => `<option value="${esc(c.number)}">${esc(c.description)}</option>`).join('')}</select></div>
         <div class="form-field"><label>Card number</label><input type="text" id="num" placeholder="4242 4242 4242 4242"></div>
         <div class="row"><div class="form-field" style="flex:1;"><label>Expiry (MM/YY)</label><input type="text" id="exp" value="12/30"></div><div class="form-field" style="flex:1;"><label>CVC</label><input type="text" id="cvc" value="123"></div></div>
       </div>
       <div id="mWallet" class="hidden"><div class="form-field"><label>Test wallet</label><select id="wsel">${testData.wallets.map(w => `<option value="${esc(w.phone)}">${esc(w.phone)} — ${esc(w.description)}</option>`).join('')}</select></div></div>
-      <div id="mBank" class="hidden"><p class="mute">Confirm with bank transfer, then use the simulator to mark cleared.</p></div>
-      <div class="field-error" id="payErr"></div>
-      <div class="row"><button class="btn alt" id="payLater">Pay later</button><button class="btn" id="payBtn">Pay now</button></div>`;
+      <div id="mBank" class="hidden"><p class="mute" style="font-size:0.8125rem;">Confirm with bank transfer, then use the simulator to mark cleared.</p></div>
+      <div class="field-error" id="payErr"></div>`;
+
     document.querySelectorAll('.tab').forEach(b => {
       b.onclick = () => {
-        document.querySelectorAll('.tab').forEach(x => { x.classList.toggle('on', x === b); });
+        document.querySelectorAll('.tab').forEach(x => {
+          const active = x === b;
+          x.style.borderColor = active ? 'var(--color-accent)' : 'var(--color-line)';
+          x.style.color = active ? 'var(--color-accent)' : 'var(--color-mute)';
+        });
         method = b.dataset.m;
         ['card','wallet','bank_transfer'].forEach(m => $( 'm' + m.charAt(0).toUpperCase() + m.slice(1)).classList.add('hidden'));
         $( 'm' + method.charAt(0).toUpperCase() + method.slice(1)).classList.remove('hidden');
@@ -98,7 +142,12 @@ async function showPay(order) {
     });
     $('scen').onchange = () => { $('num').value = $('scen').value; };
     $('num').value = $('scen').value;
-    $('payLater').onclick = () => { close('payModal'); toast('Pay anytime from My orders'); };
+
+    footer.innerHTML = `
+      <button class="btn" id="payLater">Pay later</button>
+      <button class="btn btn--accent" id="payBtn">Pay now</button>`;
+
+    $('payLater').onclick = () => { close('payModal'); showToast('Pay anytime from My orders', 'success'); };
     $('payBtn').onclick = async () => {
       let pm;
       if (method === 'card') { const [mm, yy] = $('exp').value.split('/').map(s => s.trim()); pm = { type: 'card', number: $('num').value, exp_month: mm, exp_year: yy, cvc: $('cvc').value }; }
@@ -116,16 +165,22 @@ async function showPay(order) {
   async function handleResult(o) {
     if (o.status === 'paid') {
       close('payModal');
-      box.innerHTML = `<div style="text-align:center;padding:20px;"><div style="font-size:2rem;">✅</div><h3>Payment successful</h3><p class="mute">Order ${esc(o.id)} confirmed. (Test mode — no money moved.)</p><button class="btn btn--primary btn--full" id="payDone">Done</button></div>`;
+      $('payModal').innerHTML = `
+        <div class="modal" style="max-width:460px; text-align:center; padding:40px 24px;">
+          <div style="font-size:2.5rem; margin-bottom:16px;">✅</div>
+          <h3 style="font-family:'Playfair Display',Georgia,serif;font-weight:700;margin-bottom:8px;">Payment successful</h3>
+          <p class="mute" style="margin-bottom:24px;">Order <code style="font-size:0.875rem;">${esc(o.id)}</code> confirmed. (Test mode — no money moved.)</p>
+          <button class="btn btn--accent btn--full btn--lg" id="payDone">Done</button>
+        </div>`;
       $('payDone').onclick = () => { localStorage.removeItem('cart'); close('payModal'); location.href = 'orders.html'; };
       open('payModal');
-      toast('Payment successful');
+      showToast('Payment successful', 'success');
       return;
     }
     if (o.status === 'payment_failed') { $('payErr').textContent = o.payment.failure_message || 'Payment failed'; $('payBtn').disabled = false; return; }
     if (o.payment.status === 'requires_action') {
       close('payModal');
-      box.innerHTML = `<h3>Verify with OTP</h3><div class="hint">Sandbox 3-D Secure. Enter OTP <b>123456</b>.</div><div class="form-field"><input type="text" id="otp" inputmode="numeric" maxlength="6" placeholder="123456"></div><div class="field-error" id="otpErr"></div><div class="row"><button class="btn alt" id="otpCancel">Cancel</button><button class="btn" id="otpVerify">Verify</button></div>`;
+      box.innerHTML = `<h3>Verify with OTP</h3><div class="hint">Sandbox 3-D Secure. Enter OTP <b>123456</b>.</div><div class="form-field"><input type="text" id="otp" inputmode="numeric" maxlength="6" placeholder="123456"></div><div class="field-error" id="otpErr"></div><div class="row"><button class="btn" id="otpCancel">Cancel</button><button class="btn btn--accent" id="otpVerify">Verify</button></div>`;
       open('payModal');
       $('otpVerify').onclick = async () => {
         try { handleResult(await api(`/api/store/orders/${o.id}/authenticate`, { method: 'POST', body: { otp: $('otp').value } })); }
@@ -135,7 +190,7 @@ async function showPay(order) {
     }
     if (o.payment.status === 'processing') {
       close('payModal');
-      box.innerHTML = `<h3>⏳ Awaiting confirmation</h3><div class="hint">Sandbox simulator — resolve the pending payment:</div><div class="row"><button class="btn" id="settleOk">Simulate success</button><button class="btn alt" id="settleFail">Simulate failure</button></div>`;
+      box.innerHTML = `<h3>⏳ Awaiting confirmation</h3><div class="hint" style="font-size:0.8125rem;">Sandbox simulator — resolve the pending payment:</div><div class="row"><button class="btn btn--accent" id="settleOk">Simulate success</button><button class="btn" id="settleFail">Simulate failure</button></div>`;
       open('payModal');
       $('settleOk').onclick = () => settle('succeeded');
       $('settleFail').onclick = () => settle('failed');
@@ -143,13 +198,15 @@ async function showPay(order) {
   }
   async function settle(outcome) {
     try { handleResult(await api(`/api/store/orders/${order.id}/simulate-settle`, { method: 'POST', body: { outcome } })); }
-    catch (e) { toast(e.message, 'error'); }
+    catch (e) { showToast(e.message, 'error'); }
   }
 }
 
-$('authBtn').textContent = token() ? 'Sign out' : 'Sign in';
-$('authBtn').onclick = () => { if (token()) { localStorage.removeItem('auth_token'); toast('Signed out'); location.href = 'index.html'; } else { location.href = 'index.html'; } };
+$('payClose').onclick = () => close('payModal');
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => close('payModal')));
+
+$('authBtn').textContent = token() ? 'Sign out' : 'Sign in';
+$('authBtn').onclick = () => { if (token()) { localStorage.removeItem('auth_token'); showToast('Signed out','success'); location.href = 'index.html'; } else { location.href = 'index.html'; } };
 </script>
 
 </body>

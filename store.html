@@ -4,75 +4,165 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shop · Sandbox Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231877F2'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8A%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C59D5F'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8D%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
 <div id="toast" class="toast"></div>
 
-<header class="top">
-  <span class="brand">🛍️ Sandbox Shop</span>
-  <input id="q" placeholder="Search products…" style="max-width:260px;margin:0">
-  <a href="#" id="navShop">Shop</a>
-  <a href="orders.html" id="navOrders">My orders</a>
-  <button class="link" id="cartBtn">🛒 Cart (<span id="cartCount">0</span>)</button>
-  <button class="link" id="authBtn">Sign out</button>
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="store.html" class="brand"><span class="mark">🏺</span>Sandbox Shop</a>
+
+    <nav class="nav">
+      <a href="#" id="navShop">Shop</a>
+      <a href="orders.html" id="navOrders">My orders</a>
+      <div class="user-chip" id="authTrigger">Sign in <span class="badge badge--customer">customer</span></div>
+      <button class="nav-cta" id="cartBtn">🛒 Cart <span id="cartCount">0</span></button>
+    </nav>
+  </div>
 </header>
 
-<main>
-  <section id="shopView"><div class="grid" id="products"></div><p class="mute" id="empty" hidden>No products yet.</p></section>
-  <section id="ordersView" class="hidden"><h2>My orders</h2><div id="orders"></div></section>
-</main>
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <span class="hero-eyebrow">Curated lifestyle &amp; home goods</span>
+      <h1>Things worth keeping.</h1>
+      <p>A small, considered catalogue of everyday objects — ceramics, textiles, and things made to last. Test mode: nothing here costs real money.</p>
+      <div class="hero-actions">
+        <button class="btn btn--accent btn--lg" id="btnBrowse">Browse the shop</button>
+        <button class="btn btn--lg" id="btnCart">View cart <span id="cartCount2">(0)</span></button>
+      </div>
+    </div>
+  </div>
+</section>
 
-<div class="modal" id="cartModal"><div class="box"><h3>Your cart</h3><div id="cartBody"></div>
-  <div class="row"><button class="btn alt" data-close>Keep shopping</button><button class="btn" id="checkoutBtn">Checkout</button></div></div></div>
+<section class="section--tight">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The shop</span>
+      <h2>Currently available</h2>
+      <p>Add items to your cart and check out with the sandbox payment flow.</p>
+    </div>
 
-<div id="toast"></div>
+    <div class="grid" id="products" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+      <!-- products injected here -->
+    </div>
+    <div id="emptyState" class="empty-state hidden">
+      <span class="icon">🔍</span>
+      <h3>Nothing matches</h3>
+      <p>Try a different search or browse the full collection.</p>
+    </div>
+  </div>
+</section>
+
+<div class="modal-overlay" id="cartModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>Your cart</h3>
+      <button class="modal-close" id="cartClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="cartBody">
+        <p class="mute" style="text-align:center; padding:30px 0;">Your cart is empty.</p>
+      </div>
+      <div id="cartTotal" style="border-top:1px solid var(--color-line); padding-top:18px; margin-top:18px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:10px;">
+          <span>Total</span>
+          <span id="cartTotalAmount" class="ink">₦0</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="cartKeep">Keep shopping</button>
+      <button class="btn btn--accent btn--full" id="cartCheckout">Checkout</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/api.js"></script>
 <script>
-// ---------- auth guard ----------
 requireAuth();
 
 const $ = (id) => document.getElementById(id);
+const money = (minor, cur = 'NGN') =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
+
 let products = [];
 const getCart = () => { try { return JSON.parse(localStorage.getItem('cart') || '{}'); } catch (_) { return {}; } };
 const setCart = (c) => { try { localStorage.setItem('cart', JSON.stringify(c)); } catch (_) {} renderCartCount(); };
-const renderCartCount = () => ($('cartCount').textContent = Object.values(getCart()).reduce((a, b) => a + b, 0));
+const renderCartCount = () => {
+  const n = Object.values(getCart()).reduce((a, b) => a + b, 0);
+  const el = $('cartCount');
+  const el2 = $('cartCount2');
+  if (el) el.textContent = n;
+  if (el2) el2.textContent = '(' + n + ')';
+};
 const open = (id) => $(id).classList.add('open');
 const close = (id) => $(id).classList.remove('open');
 document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => close('cartModal')));
-
-const money = (minor, cur = 'NGN') =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
 
 // ---------- catalog ----------
 async function loadProducts() {
   const { data } = await api('/api/store/products?q=' + encodeURIComponent($('q').value), { auth: false });
   products = data;
-  $('empty').hidden = data.length > 0;
-  $('products').innerHTML = data.map((p) => `<div class="card"><div class="emoji">${esc(p.image_url ? '' : '📦')}</div>
-    ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;">` : ''}
-    <b>${esc(p.name)}</b><div class="mute">${esc(p.description)}</div><div class="mute">by ${esc(p.seller)} · ${p.stock} left</div>
-    <p class="price">${money(p.price_minor, p.currency)}</p>
-    <button class="btn" data-add="${esc(p.id)}" ${p.stock < 1 ? 'disabled' : ''}>${p.stock < 1 ? 'Sold out' : 'Add to cart'}</button></div>`).join('');
+  const container = $('products');
+  const empty = $('emptyState');
+  if (data.length === 0) { container.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  container.innerHTML = data.map(p => `
+    <div class="product-card">
+      <div class="product-media">
+        <img src="${esc(p.image_url || 'https://images.unsplash.com/photo-1606313564200-e75d5e30a763?w=800&q=80&auto=format&fit=crop')}" alt="${esc(p.name)}" loading="lazy">
+        ${p.stock < 1 ? '<span class="product-badge">Sold out</span>' : ''}
+      </div>
+      <div class="product-info">
+        <div class="product-cat">${esc(p.seller)}</div>
+        <h3 class="product-name">${esc(p.name)}</h3>
+        <p class="product-desc">${esc(p.description)}</p>
+      </div>
+      <div class="product-footer">
+        <div>
+          <div class="product-price">${money(p.price_minor, p.currency)}</div>
+          <div class="product-stock">${p.stock} in stock</div>
+        </div>
+        <button class="product-add" data-add="${esc(p.id)}" ${p.stock < 1 ? 'disabled' : ''}>+</button>
+      </div>
+    </div>
+  `).join('');
+  container.querySelectorAll('.product-add').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.add;
+      const p = products.find(x => x.id === id);
+      if (!p || p.stock < 1) return;
+      const c = getCart();
+      c[id] = Math.min((c[id] || 0) + 1, p.stock);
+      setCart(c);
+      showToast('Added to cart', 'success');
+    });
+  });
 }
 $('products').addEventListener('click', (e) => {
   const id = e.target.dataset.add; if (!id) return;
-  const p = products.find(x => x.id === id);
-  if (!p || p.stock < 1) return;
-  const c = getCart(); c[id] = Math.min((c[id] || 0) + 1, p.stock); setCart(c); toast('Added to cart');
 });
 let qt; $('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(loadProducts, 250); });
+
+// ---------- esc helper ----------
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ---------- cart ----------
 function renderCart() {
   const c = getCart(), ids = Object.keys(c).filter((id) => products.find(p => p.id === id));
   const body = $('cartBody');
+  const totalEl = $('cartTotalAmount');
   if (ids.length === 0) {
-    body.innerHTML = '<p class="mute">Your cart is empty.</p>';
-    $('checkoutBtn').disabled = true;
+    body.innerHTML = '<p class="mute" style="text-align:center; padding:30px 0;">Your cart is empty.</p>';
+    totalEl.textContent = '₦0';
+    $('cartCheckout').disabled = true;
     return;
   }
   let total = 0;
@@ -81,37 +171,62 @@ function renderCart() {
     const qty = c[id];
     const lineTotal = p.price_minor * qty;
     total += lineTotal;
-    return `<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #dddfe2;">
-      <div style="flex:1;"><div class="ink" style="font-weight:700;">${esc(p.name)}</div><div class="mute" style="font-size:0.8rem;">${money(p.price_minor)} × ${qty}</div></div>
-      <div style="text-align:right;"><div class="ink" style="font-weight:700;">${money(lineTotal)}</div></div></div>`;
+    return `<div style="display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-line);">
+      <img src="${esc(p.image_url || '')}" style="width:56px;height:56px;object-fit:cover;border-radius:0;background:#F4F3F0;">
+      <div style="flex:1;">
+        <div class="ink" style="font-weight:700;font-size:0.9375rem;">${esc(p.name)}</div>
+        <div class="mute" style="font-size:0.8125rem;">${money(p.price_minor)} × ${qty}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="ink" style="font-weight:700;">${money(lineTotal)}</div>
+        <button class="btn" style="padding:6px 12px;font-size:0.8125rem;" data-rm="${esc(id)}">Remove</button>
+      </div>
+    </div>`;
   }).join('');
-  $('checkoutBtn').disabled = false;
+  totalEl.textContent = money(total);
+  $('cartCheckout').disabled = false;
+  body.querySelectorAll('[data-rm]').forEach(b => {
+    b.addEventListener('click', () => {
+      const c = getCart(); delete c[b.dataset.rm]; setCart(c); renderCart();
+    });
+  });
 }
-$('cartBtn').onclick = () => { renderCart(); open('cartModal'); };
-$('cartModal').querySelector('[data-close]').onclick = () => close('cartModal');
 
-// ---------- checkout ----------
-$('checkoutBtn').onclick = async () => {
-  if (!token()) { location.href = 'index.html'; return; }
+$('cartBtn').onclick = () => { renderCart(); open('cartModal'); };
+$('btnCart').onclick = () => { renderCart(); open('cartModal'); };
+$('cartClose').onclick = () => close('cartModal');
+$('cartKeep').onclick = () => close('cartModal');
+
+$('cartCheckout').onclick = async () => {
+  if (!token()) { close('cartModal'); location.href = 'index.html'; return; }
   close('cartModal');
   location.href = 'checkout.html';
 };
 
 // ---------- nav ----------
-$('authBtn').textContent = token() ? 'Sign out' : 'Sign in';
-$('authBtn').onclick = () => {
-  if (token()) { localStorage.removeItem('auth_token'); toast('Signed out'); location.href = 'index.html'; }
-  else { location.href = 'index.html'; }
+const qInput = $('q');
+let qt2;
+qInput.addEventListener('input', () => { clearTimeout(qt2); qt2 = setTimeout(loadProducts, 250); });
+
+const authTrigger = $('authTrigger');
+const updateAuth = () => {
+  const t = token();
+  authTrigger.innerHTML = t ? '<span style="font-weight:600;">Account</span> <span class="badge badge--customer">customer</span>' : 'Sign in <span class="badge badge--customer">customer</span>';
+  authTrigger.onclick = () => (t ? (localStorage.removeItem('auth_token'), showToast('Signed out','success'), location.reload()) : (location.href = 'index.html'));
 };
+updateAuth();
+
 $('navShop').onclick = (e) => { e.preventDefault(); $('shopView').classList.remove('hidden'); $('ordersView').classList.add('hidden'); };
-$('navOrders').onclick = (e) => { e.preventDefault(); $('shopView').classList.add('hidden'); $('ordersView').classList.remove('hidden'); loadOrders(); };
+$('navOrders').onclick = (e) => { e.preventDefault(); if (!token()) return (location.href = 'index.html'); $('shopView').classList.add('hidden'); $('ordersView').classList.remove('hidden'); loadOrders(); };
 
 async function loadOrders() {
   const { data } = await api('/api/store/orders');
-  $('orders').innerHTML = data.length ? data.map((o) => `<div class="card" style="margin-bottom:10px"><div class="row"><div><b>${esc(o.id)}</b> <span class="mute">${esc(o.status.replace('_', ' '))}</span>
+  $('orders').innerHTML = data.length ? data.map((o) => `<div class="card" style="margin-bottom:10px"><div class="row"><div><b>${esc(o.id)}</b> <span class="pill pill--${o.status}">${esc(o.status.replace('_', ' '))}</span>
     <div class="mute">${esc(o.created_at)} · ${o.items.map((i) => esc(i.quantity + '× ' + i.name)).join(', ')}</div></div>
     <div style="text-align:right"><b>${money(o.total_minor, o.currency)}</b></div></div></div>`).join('') : '<p class="mute">No orders yet.</p>';
 }
+
+$('btnBrowse').onclick = () => { $('shopView').scrollIntoView({ behavior: 'smooth' }); };
 
 renderCartCount(); loadProducts();
 </script>
