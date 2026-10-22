@@ -16,7 +16,11 @@ load_dotenv(BASE_DIR / ".env")
 class Settings:
     """All environment variables used by the backend."""
 
-    DB_PATH: str = os.getenv("DB_PATH", str(BASE_DIR / "data" / "sandbox.db"))
+    # Keep the live DB outside the workspace served by Live Server. SQLite writes
+    # in the watched tree otherwise trigger a browser reload mid-checkout.
+    DB_PATH: str = os.path.expanduser(
+        os.getenv("DB_PATH", "~/.local/share/still-sandbox/sandbox.db")
+    )
     PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
     SESSION_TTL_HOURS: int = int(os.getenv("SESSION_TTL_HOURS", "24"))
     SANDBOX_DEV: bool = os.getenv("SANDBOX_DEV", "1") == "1"

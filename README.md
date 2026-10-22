@@ -24,6 +24,11 @@ python seed.py             # idempotent: 12 products + demo accounts
 
 Health check: `curl http://localhost:8000/health`
 
+The live SQLite file is kept at `~/.local/share/still-sandbox/sandbox.db`,
+outside the folder watched by Live Server. This prevents a database write from
+reloading the browser in the middle of checkout. Override it with `DB_PATH` in
+`backend/.env` if needed.
+
 ### 2. Frontend
 
 Open the **repository root** in VS Code and run Live Server on `index.html`
