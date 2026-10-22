@@ -130,10 +130,73 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="js/api.js"></script>
 <script src="js/config.js"></script>
 <script src="js/script.js"></script>
-<script src="js/validation.js"></script>
 <script src="js/ux.js"></script>
+
+<script>
+// ---------- Sign in / Sign up -> sandbox backend ----------
+const signInForm = document.getElementById('signInForm');
+if (signInForm) {
+  signInForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('signInSubmit');
+    const orig = btn.textContent;
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    try {
+      const data = await api('/api/auth/login', {
+        method: 'POST',
+        body: {
+          email: document.getElementById('siEmail').value.trim(),
+          password: document.getElementById('siPassword').value,
+        },
+      });
+      setToken(data.access_token);
+      toast('Welcome back');
+      location.href = 'store.html';
+    } catch (err) {
+      toast(err.message || 'Sign in failed', 'error');
+    } finally {
+      btn.textContent = orig;
+      btn.disabled = false;
+    }
+  });
+}
+
+const signUpForm = document.getElementById('signUpForm');
+if (signUpForm) {
+  signUpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('signUpSubmit');
+    const orig = btn.textContent;
+    btn.textContent = 'Creating account...';
+    btn.disabled = true;
+    try {
+      const data = await api('/api/auth/signup', {
+        method: 'POST',
+        body: {
+          username: document.getElementById('suName').value.trim(),
+          email: document.getElementById('suEmail').value.trim(),
+          password: document.getElementById('suPassword').value,
+        },
+      });
+      setToken(data.access_token);
+      toast('Account created');
+      location.href = 'store.html';
+    } catch (err) {
+      toast(err.message || 'Sign up failed', 'error');
+    } finally {
+      btn.textContent = orig;
+      btn.disabled = false;
+    }
+  });
+}
+</script>
+
+</body>
+</html>
 
 </body>
 </html>

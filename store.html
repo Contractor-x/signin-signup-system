@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop · Sandbox Shop</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231877F2'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8A%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<header class="top">
+  <span class="brand">🛍️ Sandbox Shop</span>
+  <input id="q" placeholder="Search products…" style="max-width:260px;margin:0">
+  <a href="#" id="navShop">Shop</a>
+  <a href="orders.html" id="navOrders">My orders</a>
+  <button class="link" id="cartBtn">🛒 Cart (<span id="cartCount">0</span>)</button>
+  <button class="link" id="authBtn">Sign out</button>
+</header>
+
+<main>
+  <section id="shopView"><div class="grid" id="products"></div><p class="mute" id="empty" hidden>No products yet.</p></section>
+  <section id="ordersView" class="hidden"><h2>My orders</h2><div id="orders"></div></section>
+</main>
+
+<div class="modal" id="cartModal"><div class="box"><h3>Your cart</h3><div id="cartBody"></div>
+  <div class="row"><button class="btn alt" data-close>Keep shopping</button><button class="btn" id="checkoutBtn">Checkout</button></div></div></div>
+
+<div id="toast"></div>
+
+<script src="js/api.js"></script>
+<script>
+// ---------- auth guard ----------
+requireAuth();
+
+const $ = (id) => document.getElementById(id);
+let products = [];
+const getCart = () => { try { return JSON.parse(localStorage.getItem('cart') || '{}'); } catch (_) { return {}; } };
+const setCart = (c) => { try { localStorage.setItem('cart', JSON.stringify(c)); } catch (_) {} renderCartCount(); };
+const renderCartCount = () => ($('cartCount').textContent = Object.values(getCart()).reduce((a, b) => a + b, 0));
+const open = (id) => $(id).classList.add('open');
+const close = (id) => $(id).classList.remove('open');
+document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => close('cartModal')));
+
+const money = (minor, cur = 'NGN') =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
+
+// ---------- catalog ----------
+async function loadProducts() {
+  const { data } = await api('/api/store/products?q=' + encodeURIComponent($('q').value), { auth: false });
+  products = data;
+  $('empty').hidden = data.length > 0;
+  $('products').innerHTML = data.map((p) => `<div class="card"><div class="emoji">${esc(p.image_url ? '' : '📦')}</div>
+    ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;">` : ''}
+    <b>${esc(p.name)}</b><div class="mute">${esc(p.description)}</div><div class="mute">by ${esc(p.seller)} · ${p.stock} left</div>
+    <p class="price">${money(p.price_minor, p.currency)}</p>
+    <button class="btn" data-add="${esc(p.id)}" ${p.stock < 1 ? 'disabled' : ''}>${p.stock < 1 ? 'Sold out' : 'Add to cart'}</button></div>`).join('');
+}
+$('products').addEventListener('click', (e) => {
+  const id = e.target.dataset.add; if (!id) return;
+  const p = products.find(x => x.id === id);
+  if (!p || p.stock < 1) return;
+  const c = getCart(); c[id] = Math.min((c[id] || 0) + 1, p.stock); setCart(c); toast('Added to cart');
+});
+let qt; $('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(loadProducts, 250); });
+
+// ---------- cart ----------
+function renderCart() {
+  const c = getCart(), ids = Object.keys(c).filter((id) => products.find(p => p.id === id));
+  const body = $('cartBody');
+  if (ids.length === 0) {
+    body.innerHTML = '<p class="mute">Your cart is empty.</p>';
+    $('checkoutBtn').disabled = true;
+    return;
+  }
+  let total = 0;
+  body.innerHTML = ids.map(id => {
+    const p = products.find(x => x.id === id);
+    const qty = c[id];
+    const lineTotal = p.price_minor * qty;
+    total += lineTotal;
+    return `<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #dddfe2;">
+      <div style="flex:1;"><div class="ink" style="font-weight:700;">${esc(p.name)}</div><div class="mute" style="font-size:0.8rem;">${money(p.price_minor)} × ${qty}</div></div>
+      <div style="text-align:right;"><div class="ink" style="font-weight:700;">${money(lineTotal)}</div></div></div>`;
+  }).join('');
+  $('checkoutBtn').disabled = false;
+}
+$('cartBtn').onclick = () => { renderCart(); open('cartModal'); };
+$('cartModal').querySelector('[data-close]').onclick = () => close('cartModal');
+
+// ---------- checkout ----------
+$('checkoutBtn').onclick = async () => {
+  if (!token()) { location.href = 'index.html'; return; }
+  close('cartModal');
+  location.href = 'checkout.html';
+};
+
+// ---------- nav ----------
+$('authBtn').textContent = token() ? 'Sign out' : 'Sign in';
+$('authBtn').onclick = () => {
+  if (token()) { localStorage.removeItem('auth_token'); toast('Signed out'); location.href = 'index.html'; }
+  else { location.href = 'index.html'; }
+};
+$('navShop').onclick = (e) => { e.preventDefault(); $('shopView').classList.remove('hidden'); $('ordersView').classList.add('hidden'); };
+$('navOrders').onclick = (e) => { e.preventDefault(); $('shopView').classList.add('hidden'); $('ordersView').classList.remove('hidden'); loadOrders(); };
+
+async function loadOrders() {
+  const { data } = await api('/api/store/orders');
+  $('orders').innerHTML = data.length ? data.map((o) => `<div class="card" style="margin-bottom:10px"><div class="row"><div><b>${esc(o.id)}</b> <span class="mute">${esc(o.status.replace('_', ' '))}</span>
+    <div class="mute">${esc(o.created_at)} · ${o.items.map((i) => esc(i.quantity + '× ' + i.name)).join(', ')}</div></div>
+    <div style="text-align:right"><b>${money(o.total_minor, o.currency)}</b></div></div></div>`).join('') : '<p class="mute">No orders yet.</p>';
+}
+
+renderCartCount(); loadProducts();
+</script>
+
+</body>
+</html>

@@ -1,1 +1,1 @@
-"""Backend package for the sign-in / sign-up system."""
+"""Sandbox Pay backend package."""

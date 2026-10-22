@@ -1,7 +1,7 @@
-"""Centralised configuration, loaded once from the environment.
+"""Centralised configuration, read from the environment (no network needed).
 
-Every value is read eagerly at import time so any misconfiguration
-fails loudly at startup instead of halfway through a request.
+Every value is read eagerly at import time so any misconfiguration fails
+loudly at startup instead of halfway through a request.
 """
 
 import os
@@ -9,26 +9,28 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# The `.env` file can live in two places; load whichever exists:
-#   backend/.env      (recommended, next to run.sh)
-#   backend/app/.env  (accepted too)
-BACKEND_DIR = Path(__file__).resolve().parents[1]
-for dotenv_path in (BACKEND_DIR / ".env", BACKEND_DIR / "app" / ".env"):
-    if dotenv_path.is_file():
-        load_dotenv(dotenv_path)
-        break
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 class Settings:
     """All environment variables used by the backend."""
 
-    # Supabase project credentials (https://supabase.com/dashboard/project/_/settings/api).
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
-    SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-
-    # Where the frontend lives. In production this is your Vercel deployment URL.
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5500")
+    DB_PATH: str = os.getenv("DB_PATH", str(BASE_DIR / "data" / "sandbox.db"))
+    PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
+    SESSION_TTL_HOURS: int = int(os.getenv("SESSION_TTL_HOURS", "24"))
+    SANDBOX_DEV: bool = os.getenv("SANDBOX_DEV", "1") == "1"
+    # The frontend lives in a sibling directory, served by its own dev server.
+    # CORS must allow that origin.
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 settings = Settings()
+
+# User roles in ascending privilege.
+ROLES = ("customer", "shop_owner", "superuser")
+
+
+def has_role(user_role: str, required: str) -> bool:
+    """Return True if ``user_role`` meets or exceeds ``required``."""
+    return ROLES.index(user_role) >= ROLES.index(required)

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout · Sandbox Shop</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231877F2'/%3E%3Ctext x='16' y='24' font-size='20' text-anchor='middle' fill='white'%3E%F0%9F%9A%8A%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<header class="top">
+  <span class="brand">🛍️ Sandbox Shop</span>
+  <a href="store.html" class="link">← Back to shop</a>
+  <button class="link" id="authBtn">Sign out</button>
+</header>
+
+<section class="section">
+  <div class="container">
+    <div class="card" style="padding:24px;max-width:560px;margin:0 auto;">
+      <h2 style="margin-bottom:16px;">Checkout</h2>
+      <div class="form-field"><label>Full name</label><input type="text" id="shName" placeholder="Ada Lovelace" required></div>
+      <div class="form-field"><label>Delivery address</label><input type="text" id="shAddr" placeholder="12 Marina Road, Lagos" required></div>
+      <div class="form-field"><label>Phone</label><input type="tel" id="shPhone" placeholder="0801 234 5678" required></div>
+      <div class="form-field"><label>Order total (NGN)</label><input type="text" id="shTotal" readonly style="background:#f0f2f5;"></div>
+      <p class="mute" style="font-size:0.8rem;">🧪 Sandbox test mode — no real money. Use test card 4242 4242 4242 4242.</p>
+      <button class="btn btn--primary btn--full btn--lg" id="btnCheckout">Place order &amp; pay</button>
+    </div>
+  </div>
+</section>
+
+<div class="modal" id="payModal"><div class="box" id="payBox"></div></div>
+
+<script src="js/api.js"></script>
+<script>
+requireAuth();
+
+const $ = (id) => document.getElementById(id);
+const open = (id) => $(id).classList.add('open');
+const close = (id) => $(id).classList.remove('open');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (minor, cur = 'NGN') => new Intl.NumberFormat('en-NG', { style: 'currency', currency: cur }).format(minor / 100);
+
+// load cart
+async function init() {
+  const cart = JSON.parse(localStorage.getItem('cart') || '{}');
+  const ids = Object.keys(cart);
+  if (ids.length === 0) { location.href = 'store.html'; return; }
+  const { data: products } = await api('/api/store/products', { auth: false });
+  const byId = Object.fromEntries(products.map(p => [p.id, p]));
+  let total = 0;
+  ids.forEach(id => { total += byId[id].price_minor * cart[id]; });
+  $('shTotal').value = money(total, 'NGN');
+
+  $('btnCheckout').onclick = async () => {
+    if (!$('shName').value || !$('shAddr').value || !$('shPhone').value) { toast('Fill in delivery details', 'error'); return; }
+    const order = {
+      items: ids.map(id => ({ product_id: id, quantity: cart[id] })),
+      shipping: { name: $('shName').value, address: $('shAddr').value, phone: $('shPhone').value },
+    };
+    try {
+      const created = await api('/api/store/orders', { method: 'POST', body: order });
+      toast('Order created');
+      open('payModal');
+      showPay(created);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+}
+init();
+
+async function showPay(order) {
+  const testData = await api('/sandbox/v1/test-cards', { auth: false });
+  let method = 'card';
+  const box = $('payBox');
+  function render() {
+    box.innerHTML = `
+      <h3>Pay ${money(order.total_minor, order.currency)}</h3>
+      <div class="hint">🧪 Sandbox: use a test card. Real cards are rejected.</div>
+      <div class="tabs"><button class="tab on" data-m="card">Card</button><button class="tab" data-m="wallet">Mobile wallet</button><button class="tab" data-m="bank_transfer">Bank transfer</button></div>
+      <div id="mCard">
+        <div class="form-field"><label>Test scenario</label><select id="scen">${testData.cards.map(c => `<option value="${esc(c.number)}">${esc(c.description)}</option>`).join('')}</select></div>
+        <div class="form-field"><label>Card number</label><input type="text" id="num" placeholder="4242 4242 4242 4242"></div>
+        <div class="row"><div class="form-field" style="flex:1;"><label>Expiry (MM/YY)</label><input type="text" id="exp" value="12/30"></div><div class="form-field" style="flex:1;"><label>CVC</label><input type="text" id="cvc" value="123"></div></div>
+      </div>
+      <div id="mWallet" class="hidden"><div class="form-field"><label>Test wallet</label><select id="wsel">${testData.wallets.map(w => `<option value="${esc(w.phone)}">${esc(w.phone)} — ${esc(w.description)}</option>`).join('')}</select></div></div>
+      <div id="mBank" class="hidden"><p class="mute">Confirm with bank transfer, then use the simulator to mark cleared.</p></div>
+      <div class="field-error" id="payErr"></div>
+      <div class="row"><button class="btn alt" id="payLater">Pay later</button><button class="btn" id="payBtn">Pay now</button></div>`;
+    document.querySelectorAll('.tab').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('.tab').forEach(x => { x.classList.toggle('on', x === b); });
+        method = b.dataset.m;
+        ['card','wallet','bank_transfer'].forEach(m => $( 'm' + m.charAt(0).toUpperCase() + m.slice(1)).classList.add('hidden'));
+        $( 'm' + method.charAt(0).toUpperCase() + method.slice(1)).classList.remove('hidden');
+      };
+    });
+    $('scen').onchange = () => { $('num').value = $('scen').value; };
+    $('num').value = $('scen').value;
+    $('payLater').onclick = () => { close('payModal'); toast('Pay anytime from My orders'); };
+    $('payBtn').onclick = async () => {
+      let pm;
+      if (method === 'card') { const [mm, yy] = $('exp').value.split('/').map(s => s.trim()); pm = { type: 'card', number: $('num').value, exp_month: mm, exp_year: yy, cvc: $('cvc').value }; }
+      else if (method === 'wallet') { pm = { type: 'wallet', phone: $('wsel').value }; }
+      else { pm = { type: 'bank_transfer' }; }
+      $('payBtn').disabled = true;
+      try {
+        const res = await api(`/api/store/orders/${order.id}/pay`, { method: 'POST', body: { payment_method: pm } });
+        handleResult(res);
+      } catch (e) { $('payErr').textContent = e.message; $('payBtn').disabled = false; }
+    };
+  }
+  render();
+
+  async function handleResult(o) {
+    if (o.status === 'paid') {
+      close('payModal');
+      box.innerHTML = `<div style="text-align:center;padding:20px;"><div style="font-size:2rem;">✅</div><h3>Payment successful</h3><p class="mute">Order ${esc(o.id)} confirmed. (Test mode — no money moved.)</p><button class="btn btn--primary btn--full" id="payDone">Done</button></div>`;
+      $('payDone').onclick = () => { localStorage.removeItem('cart'); close('payModal'); location.href = 'orders.html'; };
+      open('payModal');
+      toast('Payment successful');
+      return;
+    }
+    if (o.status === 'payment_failed') { $('payErr').textContent = o.payment.failure_message || 'Payment failed'; $('payBtn').disabled = false; return; }
+    if (o.payment.status === 'requires_action') {
+      close('payModal');
+      box.innerHTML = `<h3>Verify with OTP</h3><div class="hint">Sandbox 3-D Secure. Enter OTP <b>123456</b>.</div><div class="form-field"><input type="text" id="otp" inputmode="numeric" maxlength="6" placeholder="123456"></div><div class="field-error" id="otpErr"></div><div class="row"><button class="btn alt" id="otpCancel">Cancel</button><button class="btn" id="otpVerify">Verify</button></div>`;
+      open('payModal');
+      $('otpVerify').onclick = async () => {
+        try { handleResult(await api(`/api/store/orders/${o.id}/authenticate`, { method: 'POST', body: { otp: $('otp').value } })); }
+        catch (e) { $('otpErr').textContent = e.message; }
+      };
+      return;
+    }
+    if (o.payment.status === 'processing') {
+      close('payModal');
+      box.innerHTML = `<h3>⏳ Awaiting confirmation</h3><div class="hint">Sandbox simulator — resolve the pending payment:</div><div class="row"><button class="btn" id="settleOk">Simulate success</button><button class="btn alt" id="settleFail">Simulate failure</button></div>`;
+      open('payModal');
+      $('settleOk').onclick = () => settle('succeeded');
+      $('settleFail').onclick = () => settle('failed');
+    }
+  }
+  async function settle(outcome) {
+    try { handleResult(await api(`/api/store/orders/${order.id}/simulate-settle`, { method: 'POST', body: { outcome } })); }
+    catch (e) { toast(e.message, 'error'); }
+  }
+}
+
+$('authBtn').textContent = token() ? 'Sign out' : 'Sign in';
+$('authBtn').onclick = () => { if (token()) { localStorage.removeItem('auth_token'); toast('Signed out'); location.href = 'index.html'; } else { location.href = 'index.html'; } };
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => close('payModal')));
+</script>
+
+</body>
+</html>
