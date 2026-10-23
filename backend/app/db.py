@@ -13,6 +13,15 @@ from .security import new_id, hash_password
 
 PLATFORM_ID = "usr_platform"
 
+# Hardcoded demo accounts. These are intentionally public, well-known
+# credentials for local/sandbox use — never ship this to a real deployment.
+# (id, email, username, password, role)
+DEFAULT_ACCOUNTS = (
+    ("usr_admin", "admin@still.local", "admin", "Admin1234!", "shop_owner"),
+    ("usr_superuser", "superuser@still.local", "superuser", "Super1234!", "superuser"),
+    ("usr_customer", "customer@still.local", "customer", "Customer1234!", "customer"),
+)
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(
   id TEXT PRIMARY KEY,
@@ -166,3 +175,10 @@ def init_db() -> None:
                 "superuser",
             ),
         )
+        # Hardcoded demo accounts (admin + superuser), recreated on startup.
+        for uid, email, username, password, role in DEFAULT_ACCOUNTS:
+            db.execute(
+                "INSERT OR IGNORE INTO users(id,email,username,password_hash,role) "
+                "VALUES(?,?,?,?,?)",
+                (uid, email, username, hash_password(password), role),
+            )

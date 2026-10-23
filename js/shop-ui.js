@@ -426,12 +426,22 @@ const ShopUI = (() => {
       document.querySelectorAll('[data-user-email]').forEach((el) => {
         el.textContent = me.email || '';
       });
+      document.querySelectorAll('[data-signout]').forEach((el) => { el.hidden = false; });
+      document.querySelectorAll('[data-signin]').forEach((el) => { el.hidden = true; });
       return me;
     } catch (err) {
       if (err.status === 401) {
         clearToken();
-        const page = location.pathname.split('/').pop() || 'store.html';
-        location.replace(`index.html?next=${encodeURIComponent(page + location.search)}`);
+        // Public storefront: no session is fine — just show the guest state.
+        document.querySelectorAll('[data-user-name]').forEach((el) => { el.textContent = 'Guest'; });
+        document.querySelectorAll('[data-user-role]').forEach((el) => { el.textContent = ''; });
+        document.querySelectorAll('[data-user-email]').forEach((el) => { el.textContent = 'Browsing as guest'; });
+        document.querySelectorAll('[data-signout]').forEach((el) => { el.hidden = true; });
+        document.querySelectorAll('[data-signin]').forEach((el) => { el.hidden = false; });
+        if (requireSession) {
+          const page = location.pathname.split('/').pop() || 'index.html';
+          location.replace(`signin.html?next=${encodeURIComponent(page + location.search)}`);
+        }
       } else {
         toast(err.message, 'error');
       }

@@ -97,7 +97,7 @@
       <p class="summary__note">
         Sandbox checkout. No real payment is taken and nothing ships.
       </p>
-      ${editable ? '<a class="text-link summary__edit" href="store.html">Edit bag</a>' : ''}`;
+      ${editable ? '<a class="text-link summary__edit" href="index.html">Edit bag</a>' : ''}`;
   }
 
   function renderCartSummary() {
@@ -599,7 +599,7 @@
         <div class="success__actions">
           <button class="btn" type="button" data-print-receipt>Print receipt <span>↗</span></button>
           <a class="btn btn--ghost" href="orders.html">View your orders</a>
-          <a class="btn btn--ghost" href="store.html">Continue shopping</a>
+          <a class="btn btn--ghost" href="index.html">Continue shopping</a>
         </div>
       </div>`;
 
@@ -622,7 +622,7 @@
           been released.
         </p>
         <div class="success__actions">
-          <a class="btn" href="store.html">Back to the collection</a>
+          <a class="btn" href="index.html">Back to the collection</a>
           <a class="btn btn--ghost" href="orders.html">View your orders</a>
         </div>
       </div>`;
@@ -637,7 +637,7 @@
       <div class="empty">
         <h3>Nothing to check out.</h3>
         <p>${esc(message)}</p>
-        <a class="btn" href="store.html">Browse the collection <span>→</span></a>
+        <a class="btn" href="index.html">Browse the collection <span>→</span></a>
       </div>`;
   }
 
@@ -681,7 +681,7 @@
     ShopUI.wireImageFallbacks(document);
 
     document.querySelector('[data-open-cart]')?.addEventListener('click', () => {
-      if (!document.getElementById('cartDrawer')) location.href = 'store.html';
+      if (!document.getElementById('cartDrawer')) location.href = 'index.html';
     });
 
     const orderId = new URLSearchParams(location.search).get('order');

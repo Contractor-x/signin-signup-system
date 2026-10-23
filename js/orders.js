@@ -199,7 +199,7 @@
     $('retryOrders')?.addEventListener('click', load);
 
     document.querySelector('[data-open-cart]')?.addEventListener('click', () => {
-      if (!document.getElementById('cartDrawer')) location.href = 'store.html';
+      if (!document.getElementById('cartDrawer')) location.href = 'index.html';
     });
   }
 

@@ -10,6 +10,7 @@ real photography and honest copy. Running this file more than once is safe:
   products listed by real shop owners are never touched.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -140,6 +141,19 @@ PRODUCTS = [
         "?auto=compress&cs=tinysrgb&w=900&h=1125&fit=crop",
         "Apothecary",
     ),
+]
+
+
+def _local_image(name: str) -> str:
+    """Product photo shipped in the repo, so images work offline."""
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return f"assets/products/{slug}.jpg"
+
+
+# Serve catalogue photos from assets/ instead of a third-party CDN.
+PRODUCTS = [
+    (name, desc, price, stock, emoji, _local_image(name), category)
+    for name, desc, price, stock, emoji, _image, category in PRODUCTS
 ]
 
 

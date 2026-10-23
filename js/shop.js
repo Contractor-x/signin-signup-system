@@ -182,8 +182,7 @@
 
   if (!grid) return;
 
-  ShopUI.init().then((me) => {
-    if (!me) return;
+  ShopUI.init({ requireSession: false }).then(() => {
     loadProducts({ firstLoad: true });
   });
 

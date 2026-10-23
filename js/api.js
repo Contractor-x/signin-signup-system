@@ -91,9 +91,9 @@ async function api(path, { method = 'GET', body, auth = true, signal } = {}) {
 
   if (res.status === 401 && auth && current && !path.startsWith('/api/auth/')) {
     clearToken();
-    const page = location.pathname.split('/').pop() || 'store.html';
-    if (page !== 'index.html') {
-      location.replace(`index.html?next=${encodeURIComponent(page + location.search)}`);
+    const page = location.pathname.split('/').pop() || 'index.html';
+    if (page !== 'signin.html') {
+      location.replace(`signin.html?next=${encodeURIComponent(page + location.search)}`);
     }
   }
 
@@ -107,11 +107,11 @@ async function api(path, { method = 'GET', body, auth = true, signal } = {}) {
   return data;
 }
 
-/** Send unauthenticated users to the sign-in page, preserving where they were. */
+/** Protected pages send guests to the sign-in page, preserving their target. */
 function requireAuth() {
   if (token()) return true;
-  const page = location.pathname.split('/').pop() || 'store.html';
-  location.replace(`index.html?next=${encodeURIComponent(page + location.search)}`);
+  const page = location.pathname.split('/').pop() || 'index.html';
+  location.replace(`signin.html?next=${encodeURIComponent(page + location.search)}`);
   return false;
 }
 
