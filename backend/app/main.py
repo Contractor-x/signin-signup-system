@@ -38,11 +38,27 @@ app.add_middleware(
         "http://localhost:5500",
         "http://127.0.0.1:5500",
         settings.FRONTEND_URL,
+        "https://signin-signup-system.vercel.app",
     ],
+    # Vercel preview deployments get a new *.vercel.app host each time.
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def allow_private_network(request: Request, call_next):
+    """Let a public HTTPS page (e.g. Vercel) call this loopback backend.
+
+    Chrome's Local/Private Network Access sends a preflight carrying
+    ``Access-Control-Request-Private-Network`` and requires this opt-in header.
+    """
+    response = await call_next(request)
+    if request.headers.get("access-control-request-private-network") == "true":
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
 
 app.include_router(auth.router)
 app.include_router(gateway.router)
