@@ -59,7 +59,7 @@ export default function CheckoutScreen() {
     return null;
   }
 
-  const [name, setName] = useState(user?.username || '');
+  const [name, setName] = useState(user?.fullName || user?.username || '');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [method, setMethod] = useState<Method>('card');
