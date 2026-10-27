@@ -38,7 +38,7 @@ export default function PreCheckoutScreen() {
     }
     try {
       await signIn(email, password);
-      router.push('/checkout');
+      router.replace('/checkout');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password.');
     }
@@ -49,7 +49,7 @@ export default function PreCheckoutScreen() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      if (useAuth.getState().user) router.push('/checkout');
+      if (useAuth.getState().user) router.replace('/checkout');
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed.');
     } finally {
@@ -147,7 +147,7 @@ export default function PreCheckoutScreen() {
                     setEmail(account.email);
                     setPassword(account.password);
                     signIn(account.email, account.password)
-                      .then(() => router.push('/checkout'))
+                      .then(() => router.replace('/checkout'))
                       .catch((err: any) => setError(err.message));
                   }}
                 >
@@ -172,6 +172,8 @@ export default function PreCheckoutScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          <Text style={styles.credit}>By Umusa</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -209,4 +211,5 @@ const styles = {
   guestLink: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
   guestLinkText: { fontFamily: 'monospace', fontSize: 10, color: '#1E34E8', textDecorationLine: 'underline' as const },
   guestLinkBold: { fontWeight: '700' as const },
+  credit: { fontFamily: 'monospace', fontSize: 9, letterSpacing: 1.2, color: '#6C6E64', opacity: 0.55, textAlign: 'center' as const, marginTop: 14 },
 };
