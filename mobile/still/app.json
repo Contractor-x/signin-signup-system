@@ -29,12 +29,6 @@
         }
       ]
     ],
-    "extra": {
-      "eas": {
-        "projectId": "b88b047a-fbcb-4d6d-b52e-8fa887dfe825"
-      }
-    },
-    "owner": "ashir-tech",
     "scheme": "stillapp"
   }
 }
