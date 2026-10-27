@@ -129,6 +129,8 @@ export default function SignUpScreen() {
               <Text style={styles.footerLink}>Sign in</Text>
             </TouchableOpacity>
           </View>
+
+          <Text style={styles.credit}>By Umusa</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -159,4 +161,5 @@ const styles = {
   footer: { flexDirection: 'row' as const, justifyContent: 'center' as const },
   footerText: { fontSize: 12, color: '#6C6E64' },
   footerLink: { fontSize: 12, color: '#1E34E8', fontWeight: '600' as const },
+  credit: { fontFamily: 'monospace', fontSize: 9, letterSpacing: 1.2, color: '#6C6E64', opacity: 0.55, textAlign: 'center' as const, marginTop: 18 },
 };
