@@ -163,6 +163,8 @@ export default function SignInScreen() {
           <TouchableOpacity style={styles.guestLink} onPress={() => router.replace('/')}>
             <Text style={styles.guestLinkText}>Continue browsing as a guest</Text>
           </TouchableOpacity>
+
+          <Text style={styles.credit}>By Umusa</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -203,4 +205,5 @@ const styles = {
   footerLink: { fontSize: 12, color: '#1E34E8', fontWeight: '600' as const },
   guestLink: { alignItems: 'center' as const, paddingVertical: 8 },
   guestLinkText: { fontFamily: 'monospace', fontSize: 10, color: '#6C6E64', textDecorationLine: 'underline' as const },
+  credit: { fontFamily: 'monospace', fontSize: 9, letterSpacing: 1.2, color: '#6C6E64', opacity: 0.55, textAlign: 'center' as const, marginTop: 14 },
 };
