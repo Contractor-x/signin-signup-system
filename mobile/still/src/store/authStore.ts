@@ -11,7 +11,19 @@ export type AuthUser = {
   email: string;
   username: string;
   role: UserRole;
+  fullName?: string | null;
+  avatarUrl?: string | null;
 };
+
+function avatarUrlFromMetadata(metadata: Record<string, any> | undefined): string | null {
+  const url = metadata?.avatar_url || metadata?.picture;
+  return typeof url === 'string' && url.length > 0 ? url : null;
+}
+
+function fullNameFromMetadata(metadata: Record<string, any> | undefined): string | null {
+  const name = metadata?.full_name || metadata?.name || metadata?.display_name;
+  return typeof name === 'string' && name.trim().length > 0 ? name.trim() : null;
+}
 
 interface AuthState {
   user: AuthUser | null;
@@ -66,6 +78,8 @@ export const useAuth = create<AuthState>()(
                 email: data.user.email!,
                 username: data.user.user_metadata.username || data.user.email!.split('@')[0],
                 role: (data.user.app_metadata?.role as UserRole) || 'customer',
+                fullName: fullNameFromMetadata(data.user.user_metadata),
+                avatarUrl: avatarUrlFromMetadata(data.user.user_metadata),
               },
             });
           }
@@ -117,6 +131,8 @@ export const useAuth = create<AuthState>()(
                 email: data.user.email!,
                 username,
                 role: 'customer',
+                fullName: fullNameFromMetadata(data.user.user_metadata),
+                avatarUrl: avatarUrlFromMetadata(data.user.user_metadata),
               },
             });
           }
@@ -190,6 +206,8 @@ export const useAuth = create<AuthState>()(
                 email: user.email!,
                 username: user.user_metadata.username || user.email!.split('@')[0],
                 role: (user.app_metadata?.role as UserRole) || 'customer',
+                fullName: fullNameFromMetadata(user.user_metadata),
+                avatarUrl: avatarUrlFromMetadata(user.user_metadata),
               },
             });
           }
@@ -212,7 +230,11 @@ export const useAuth = create<AuthState>()(
 
       fetchProfile: async () => {
         if (AUTH_DEMO) return;
-        const { data: { user } } = await supabase.auth.getUser();
+        // Read the locally persisted session instead of validating it over the
+        // network on every cold start. The Supabase client refreshes expired
+        // tokens in the background, so the shop can paint immediately.
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user) {
           set({ user: null });
           return;
@@ -223,6 +245,8 @@ export const useAuth = create<AuthState>()(
             email: user.email!,
             username: user.user_metadata.username || user.email!.split('@')[0],
             role: (user.app_metadata?.role as UserRole) || 'customer',
+            fullName: fullNameFromMetadata(user.user_metadata),
+            avatarUrl: avatarUrlFromMetadata(user.user_metadata),
           },
         });
       },
