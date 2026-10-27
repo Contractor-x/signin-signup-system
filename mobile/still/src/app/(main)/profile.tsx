@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,13 @@ export default function ProfileScreen() {
   const user = useAuth((state) => state.user);
   const signOut = useAuth((state) => state.signOut);
   const router = useRouter();
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.avatarUrl]);
+
+  const displayName = user?.fullName?.trim() || user?.username || '';
 
   const handleSignOut = () => {
     Alert.alert('Sign out', 'You can sign back in at any time.', [
@@ -42,10 +50,19 @@ export default function ProfileScreen() {
         {user ? (
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user.username.charAt(0).toUpperCase()}</Text>
+              {user.avatarUrl && !avatarFailed ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+              )}
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user.username}</Text>
+              <Text style={styles.profileName}>{displayName}</Text>
               <Text style={styles.profileEmail}>{user.email}</Text>
               <View style={styles.rolePill}>
                 <Text style={styles.roleText}>{user.role.replace(/_/g, ' ')}</Text>
@@ -108,6 +125,8 @@ export default function ProfileScreen() {
             </Text>
           </View>
         ) : null}
+
+        <Text style={styles.credit}>By Umusa</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -147,7 +166,8 @@ const styles = {
   headerSub: { fontSize: 12, color: '#6C6E64', marginTop: 2 },
   profileCard: { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: '#FAF8F2', borderWidth: 1, borderColor: '#CBC5B7', borderRadius: 10, padding: 16, marginBottom: 14 },
   signInCard: { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: '#E6F4FE', borderWidth: 1, borderColor: '#BBDEFB', borderRadius: 10, padding: 16, marginBottom: 14, gap: 12 },
-  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#101210', alignItems: 'center' as const, justifyContent: 'center' as const, marginRight: 14 },
+  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#101210', alignItems: 'center' as const, justifyContent: 'center' as const, marginRight: 14, overflow: 'hidden' as const },
+  avatarImage: { width: '100%', height: '100%' },
   avatarGhost: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFFDF8', borderWidth: 1, borderColor: '#CBC5B7', alignItems: 'center' as const, justifyContent: 'center' as const },
   avatarText: { fontFamily: 'serif', fontSize: 26, color: '#FFFDF8' },
   profileInfo: { flex: 1 },
@@ -169,4 +189,5 @@ const styles = {
   demoTitle: { fontFamily: 'monospace', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#6C6E64', marginBottom: 8 },
   demoText: { fontFamily: 'monospace', fontSize: 10, color: '#34372F', marginBottom: 4 },
   demoHint: { fontSize: 10, color: '#6C6E64', marginTop: 8, lineHeight: 15 },
+  credit: { fontFamily: 'monospace', fontSize: 9, letterSpacing: 1.2, color: '#6C6E64', opacity: 0.55, textAlign: 'center' as const, marginTop: 18, marginBottom: 4 },
 };
