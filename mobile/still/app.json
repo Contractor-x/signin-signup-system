@@ -29,6 +29,16 @@
         }
       ]
     ],
-    "scheme": "stillapp"
+    "scheme": "stillapp",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "b06bbb30-419e-4fed-8788-941ed87e1f13"
+      }
+    }
   }
 }
