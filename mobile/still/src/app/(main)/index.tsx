@@ -41,7 +41,7 @@ export default function StoreScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<string>('featured');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEMO);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
@@ -75,7 +75,6 @@ export default function StoreScreen() {
 
   const fetchProducts = useCallback(async () => {
     if (IS_DEMO) {
-      setLoading(true);
       setError('');
       setLoading(false);
       setRefreshing(false);
